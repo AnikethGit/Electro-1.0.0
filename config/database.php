@@ -5,10 +5,10 @@
  */
 
 // Database credentials
-define('DB_HOST', 'localhost');
-define('DB_USER', 'ecommerce_user');      // ← Changed to new user
-define('DB_PASS', '');                    // ← No password
-define('DB_NAME', 'ecommerce_user');      // ← Changed to new database
+define('DB_HOST', 'localhost');      // Hostinger: usually localhost
+define('DB_USER', 'root');           // Your MySQL username (change in production)
+define('DB_PASS', '');               // Your MySQL password
+define('DB_NAME', 'ecommerce_db');   // Database name
 
 // Create connection
 $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
@@ -24,4 +24,6 @@ $conn->set_charset("utf8");
 // Optional: Set timezone
 date_default_timezone_set('UTC');
 
+// Return connection for use in other files
+// Usage: include 'config/database.php';
 ?>
