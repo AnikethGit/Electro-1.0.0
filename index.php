@@ -8,6 +8,9 @@ $dbname = "electro_shop";
 try {
     $conn = new mysqli($servername, $username, $password, $dbname);
     
+    // Set character encoding to UTF-8
+    $conn->set_charset("utf8mb4");
+    
     if ($conn->connect_error) {
         die("Connection failed: " . $conn->connect_error);
     }
@@ -23,40 +26,73 @@ if (!isset($_SESSION['cart'])) {
     $_SESSION['cart'] = array();
 }
 
-// Fetch categories from database
-$categories_result = $conn->query("SELECT * FROM categories LIMIT 5");
+// Fetch categories from database with error handling
+$categories_result = null;
+if ($stmt = $conn->prepare("SELECT id, name, COUNT(*) as count FROM categories LEFT JOIN products ON categories.id = products.category_id GROUP BY categories.id LIMIT 5")) {
+    $stmt->execute();
+    $categories_result = $stmt->get_result();
+} else {
+    $categories_result = null;
+}
 
 // Fetch featured products
-$featured_result = $conn->query("SELECT * FROM products WHERE featured = 1 LIMIT 4");
+$featured_result = null;
+if ($stmt = $conn->prepare("SELECT * FROM products WHERE featured = 1 LIMIT 4")) {
+    $stmt->execute();
+    $featured_result = $stmt->get_result();
+}
 
 // Fetch all products for main tab
-$all_products_result = $conn->query("SELECT * FROM products LIMIT 12");
+$all_products_result = null;
+if ($stmt = $conn->prepare("SELECT * FROM products LIMIT 12")) {
+    $stmt->execute();
+    $all_products_result = $stmt->get_result();
+}
 
 // Fetch new arrivals
-$new_result = $conn->query("SELECT * FROM products WHERE is_new = 1 LIMIT 12");
+$new_result = null;
+if ($stmt = $conn->prepare("SELECT * FROM products WHERE is_new = 1 LIMIT 12")) {
+    $stmt->execute();
+    $new_result = $stmt->get_result();
+}
 
 // Fetch top selling products
-$top_result = $conn->query("SELECT * FROM products WHERE top_selling = 1 LIMIT 12");
+$top_result = null;
+if ($stmt = $conn->prepare("SELECT * FROM products WHERE top_selling = 1 LIMIT 12")) {
+    $stmt->execute();
+    $top_result = $stmt->get_result();
+}
 
 // Handle Add to Cart
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_to_cart'])) {
-    $product_id = htmlspecialchars($_POST['product_id']);
-    $qty = isset($_POST['qty']) ? (int)$_POST['qty'] : 1;
+    $product_id = isset($_POST['product_id']) ? intval($_POST['product_id']) : 0;
+    $qty = isset($_POST['qty']) ? intval($_POST['qty']) : 1;
     
-    if (!isset($_SESSION['cart'][$product_id])) {
-        $_SESSION['cart'][$product_id] = 0;
+    if ($product_id > 0 && $qty > 0) {
+        if (!isset($_SESSION['cart'][$product_id])) {
+            $_SESSION['cart'][$product_id] = 0;
+        }
+        $_SESSION['cart'][$product_id] += $qty;
     }
-    $_SESSION['cart'][$product_id] += $qty;
 }
 
 // Calculate cart total
 $cart_total = 0;
-foreach ($_SESSION['cart'] as $pid => $qty) {
-    $price_sql = "SELECT price FROM products WHERE id = " . intval($pid);
-    if ($price_result = $conn->query($price_sql)) {
-        if ($price_result->num_rows > 0) {
-            $row = $price_result->fetch_assoc();
-            $cart_total += $row['price'] * $qty;
+if (is_array($_SESSION['cart'])) {
+    foreach ($_SESSION['cart'] as $pid => $qty) {
+        $pid = intval($pid);
+        $qty = intval($qty);
+        
+        if ($stmt = $conn->prepare("SELECT price FROM products WHERE id = ?")) {
+            $stmt->bind_param("i", $pid);
+            $stmt->execute();
+            $price_result = $stmt->get_result();
+            
+            if ($price_result && $price_result->num_rows > 0) {
+                $row = $price_result->fetch_assoc();
+                $cart_total += floatval($row['price']) * $qty;
+            }
+            $stmt->close();
         }
     }
 }
@@ -85,7 +121,6 @@ foreach ($_SESSION['cart'] as $pid => $qty) {
     <!-- Libraries Stylesheet -->
     <link href="lib/animate/animate.min.css" rel="stylesheet">
     <link href="lib/owlcarousel/assets/owl.carousel.min.css" rel="stylesheet">
-
 
     <!-- Customized Bootstrap Stylesheet -->
     <link href="css/bootstrap.min.css" rel="stylesheet">
@@ -128,7 +163,7 @@ foreach ($_SESSION['cart'] as $pid => $qty) {
                                 USD</small></a>
                         <div class="dropdown-menu rounded">
                             <a href="#" class="dropdown-item"> Euro</a>
-                            <a href="#" class="dropdown-item"> Dolar</a>
+                            <a href="#" class="dropdown-item"> Dollar</a>
                         </div>
                     </div>
                     <div class="dropdown">
@@ -137,8 +172,8 @@ foreach ($_SESSION['cart'] as $pid => $qty) {
                         <div class="dropdown-menu rounded">
                             <a href="#" class="dropdown-item"> English</a>
                             <a href="#" class="dropdown-item"> Turkish</a>
-                            <a href="#" class="dropdown-item"> Spanol</a>
-                            <a href="#" class="dropdown-item"> Italiano</a>
+                            <a href="#" class="dropdown-item"> Spanish</a>
+                            <a href="#" class="dropdown-item"> Italian</a>
                         </div>
                     </div>
                     <div class="dropdown">
@@ -193,9 +228,9 @@ foreach ($_SESSION['cart'] as $pid => $qty) {
             <div class="col-md-4 col-lg-3 text-center text-lg-end">
                 <div class="d-inline-flex align-items-center">
                     <a href="#" class="text-muted d-flex align-items-center justify-content-center me-3"><span
-                            class="rounded-circle btn-md-square border"><i class="fas fa-random"></i></a>
+                            class="rounded-circle btn-md-square border"><i class="fas fa-sync-alt"></i></span></a>
                     <a href="#" class="text-muted d-flex align-items-center justify-content-center me-3"><span
-                            class="rounded-circle btn-md-square border"><i class="fas fa-heart"></i></a>
+                            class="rounded-circle btn-md-square border"><i class="fas fa-heart"></i></span></a>
                     <a href="cart.php" class="text-muted d-flex align-items-center justify-content-center"><span
                             class="rounded-circle btn-md-square border"><i class="fas fa-shopping-cart"></i></span>
                         <span class="text-dark ms-2">$<?php echo number_format($cart_total, 2); ?></span></a>
@@ -218,15 +253,17 @@ foreach ($_SESSION['cart'] as $pid => $qty) {
                         <div class="navbar-nav ms-auto py-0">
                             <ul class="list-unstyled categories-bars">
                                 <?php
-                                $categories_result->data_seek(0);
-                                if ($categories_result && $categories_result->num_rows > 0) {
-                                    while($cat = $categories_result->fetch_assoc()) {
-                                        echo "<li>
-                                            <div class='categories-bars-item'>
-                                                <a href='category.php?id=" . htmlspecialchars($cat['id']) . "'>" . htmlspecialchars($cat['name']) . "</a>
-                                                <span>(" . htmlspecialchars($cat['count']) . ")</span>
-                                            </div>
-                                        </li>";
+                                if ($categories_result) {
+                                    $categories_result->data_seek(0);
+                                    if ($categories_result->num_rows > 0) {
+                                        while($cat = $categories_result->fetch_assoc()) {
+                                            echo "<li>
+                                                <div class='categories-bars-item'>
+                                                    <a href='category.php?id=" . htmlspecialchars($cat['id']) . "'>" . htmlspecialchars($cat['name']) . "</a>
+                                                    <span>(" . htmlspecialchars($cat['count']) . ")</span>
+                                                </div>
+                                            </li>";
+                                        }
                                     }
                                 }
                                 ?>
@@ -265,15 +302,17 @@ foreach ($_SESSION['cart'] as $pid => $qty) {
                                 <div class="dropdown-menu m-0">
                                     <ul class="list-unstyled categories-bars">
                                         <?php
-                                        $categories_result->data_seek(0);
-                                        if ($categories_result && $categories_result->num_rows > 0) {
-                                            while($cat = $categories_result->fetch_assoc()) {
-                                                echo "<li>
-                                                    <div class='categories-bars-item'>
-                                                        <a href='category.php?id=" . htmlspecialchars($cat['id']) . "'>" . htmlspecialchars($cat['name']) . "</a>
-                                                        <span>(" . htmlspecialchars($cat['count']) . ")</span>
-                                                    </div>
-                                                </li>";
+                                        if ($categories_result) {
+                                            $categories_result->data_seek(0);
+                                            if ($categories_result->num_rows > 0) {
+                                                while($cat = $categories_result->fetch_assoc()) {
+                                                    echo "<li>
+                                                        <div class='categories-bars-item'>
+                                                            <a href='category.php?id=" . htmlspecialchars($cat['id']) . "'>" . htmlspecialchars($cat['name']) . "</a>
+                                                            <span>(" . htmlspecialchars($cat['count']) . ")</span>
+                                                        </div>
+                                                    </li>";
+                                                }
                                             }
                                         }
                                         ?>
@@ -303,7 +342,7 @@ foreach ($_SESSION['cart'] as $pid => $qty) {
                             <h4 class="text-uppercase fw-bold mb-4 wow fadeInRight" data-wow-delay="0.1s"
                                 style="letter-spacing: 3px;">Save Up To A $400</h4>
                             <h1 class="display-3 text-capitalize mb-4 wow fadeInRight" data-wow-delay="0.3s">On Selected
-                                Laptops & Desktop Or Smartphone</h1>
+                                Laptops &amp; Desktop Or Smartphone</h1>
                             <p class="text-dark wow fadeInRight" data-wow-delay="0.5s">Terms and Condition Apply</p>
                             <a class="btn btn-primary rounded-pill py-3 px-5 wow fadeInRight" data-wow-delay="0.7s"
                                 href="shop.php">Shop Now</a>
@@ -317,7 +356,7 @@ foreach ($_SESSION['cart'] as $pid => $qty) {
                             <h4 class="text-uppercase fw-bold mb-4 wow fadeInRight" data-wow-delay="0.1s"
                                 style="letter-spacing: 3px;">Save Up To A $200</h4>
                             <h1 class="display-3 text-capitalize mb-4 wow fadeInRight" data-wow-delay="0.3s">On Selected
-                                Laptops & Desktop Or Smartphone</h1>
+                                Laptops &amp; Desktop Or Smartphone</h1>
                             <p class="text-dark wow fadeInRight" data-wow-delay="0.5s">Terms and Condition Apply</p>
                             <a class="btn btn-primary rounded-pill py-3 px-5 wow fadeInRight" data-wow-delay="0.7s"
                                 href="shop.php">Shop Now</a>
@@ -327,7 +366,7 @@ foreach ($_SESSION['cart'] as $pid => $qty) {
             </div>
             <div class="col-12 col-lg-5 col-xl-3 wow fadeInRight" data-wow-delay="0.1s">
                 <div class="carousel-header-banner h-100">
-                    <img src="img/header-imgjpg" class="img-fluid w-100 h-100" style="object-fit: cover;" alt="Image">
+                    <img src="img/header-img.jpg" class="img-fluid w-100 h-100" style="object-fit: cover;" alt="Image">
                     <div class="carousel-banner-offer">
                         <p class="bg-primary text-white rounded fs-5 py-2 px-4 mb-0 me-3">Save 20%</p>
                         <p class="text-primary fs-5 fw-bold mb-0">Special Offer</p>
@@ -499,14 +538,14 @@ foreach ($_SESSION['cart'] as $pid => $qty) {
                             $delay = 0.1;
                             if ($all_products_result && $all_products_result->num_rows > 0) {
                                 while($product = $all_products_result->fetch_assoc()) {
-                                    $product_id = htmlspecialchars($product['id']);
-                                    $product_name = htmlspecialchars($product['name']);
-                                    $product_price = number_format($product['price'], 2);
-                                    $original_price = number_format($product['original_price'], 2);
-                                    $image = htmlspecialchars($product['image']);
-                                    $category = htmlspecialchars($product['category']);
-                                    $category_id = htmlspecialchars($product['category_id']);
-                                    $badge = $product['is_new'] ? 'New' : ($product['on_sale'] ? 'Sale' : '');
+                                    $product_id = htmlspecialchars($product['id'] ?? '');
+                                    $product_name = htmlspecialchars($product['name'] ?? '');
+                                    $product_price = isset($product['price']) ? number_format($product['price'], 2) : '0.00';
+                                    $original_price = isset($product['original_price']) ? number_format($product['original_price'], 2) : $product_price;
+                                    $image = htmlspecialchars($product['image'] ?? '');
+                                    $category = htmlspecialchars($product['category'] ?? '');
+                                    $category_id = htmlspecialchars($product['category_id'] ?? '');
+                                    $badge = isset($product['is_new']) && $product['is_new'] ? 'New' : (isset($product['on_sale']) && $product['on_sale'] ? 'Sale' : '');
                             ?>
                             <div class="col-md-6 col-lg-4 col-xl-3">
                                 <div class="product-item rounded wow fadeInUp" data-wow-delay="<?php echo $delay; ?>s">
@@ -546,7 +585,7 @@ foreach ($_SESSION['cart'] as $pid => $qty) {
                                                 <a href="#"
                                                     class="text-primary d-flex align-items-center justify-content-center me-3"><span
                                                         class="rounded-circle btn-sm-square border"><i
-                                                            class="fas fa-random"></i></span></a>
+                                                            class="fas fa-sync-alt"></i></span></a>
                                                 <a href="#"
                                                     class="text-primary d-flex align-items-center justify-content-center me-0"><span
                                                         class="rounded-circle btn-sm-square border"><i
@@ -573,13 +612,13 @@ foreach ($_SESSION['cart'] as $pid => $qty) {
                             $delay = 0.1;
                             if ($new_result && $new_result->num_rows > 0) {
                                 while($product = $new_result->fetch_assoc()) {
-                                    $product_id = htmlspecialchars($product['id']);
-                                    $product_name = htmlspecialchars($product['name']);
-                                    $product_price = number_format($product['price'], 2);
-                                    $original_price = number_format($product['original_price'], 2);
-                                    $image = htmlspecialchars($product['image']);
-                                    $category = htmlspecialchars($product['category']);
-                                    $category_id = htmlspecialchars($product['category_id']);
+                                    $product_id = htmlspecialchars($product['id'] ?? '');
+                                    $product_name = htmlspecialchars($product['name'] ?? '');
+                                    $product_price = isset($product['price']) ? number_format($product['price'], 2) : '0.00';
+                                    $original_price = isset($product['original_price']) ? number_format($product['original_price'], 2) : $product_price;
+                                    $image = htmlspecialchars($product['image'] ?? '');
+                                    $category = htmlspecialchars($product['category'] ?? '');
+                                    $category_id = htmlspecialchars($product['category_id'] ?? '');
                             ?>
                             <div class="col-md-6 col-lg-4 col-xl-3">
                                 <div class="product-item rounded wow fadeInUp" data-wow-delay="<?php echo $delay; ?>s">
@@ -617,7 +656,7 @@ foreach ($_SESSION['cart'] as $pid => $qty) {
                                                 <a href="#"
                                                     class="text-primary d-flex align-items-center justify-content-center me-3"><span
                                                         class="rounded-circle btn-sm-square border"><i
-                                                            class="fas fa-random"></i></span></a>
+                                                            class="fas fa-sync-alt"></i></span></a>
                                                 <a href="#"
                                                     class="text-primary d-flex align-items-center justify-content-center me-0"><span
                                                         class="rounded-circle btn-sm-square border"><i
@@ -642,13 +681,13 @@ foreach ($_SESSION['cart'] as $pid => $qty) {
                             $delay = 0.1;
                             if ($featured_result && $featured_result->num_rows > 0) {
                                 while($product = $featured_result->fetch_assoc()) {
-                                    $product_id = htmlspecialchars($product['id']);
-                                    $product_name = htmlspecialchars($product['name']);
-                                    $product_price = number_format($product['price'], 2);
-                                    $original_price = number_format($product['original_price'], 2);
-                                    $image = htmlspecialchars($product['image']);
-                                    $category = htmlspecialchars($product['category']);
-                                    $category_id = htmlspecialchars($product['category_id']);
+                                    $product_id = htmlspecialchars($product['id'] ?? '');
+                                    $product_name = htmlspecialchars($product['name'] ?? '');
+                                    $product_price = isset($product['price']) ? number_format($product['price'], 2) : '0.00';
+                                    $original_price = isset($product['original_price']) ? number_format($product['original_price'], 2) : $product_price;
+                                    $image = htmlspecialchars($product['image'] ?? '');
+                                    $category = htmlspecialchars($product['category'] ?? '');
+                                    $category_id = htmlspecialchars($product['category_id'] ?? '');
                             ?>
                             <div class="col-md-6 col-lg-4 col-xl-3">
                                 <div class="product-item rounded wow fadeInUp" data-wow-delay="<?php echo $delay; ?>s">
@@ -685,7 +724,7 @@ foreach ($_SESSION['cart'] as $pid => $qty) {
                                                 <a href="#"
                                                     class="text-primary d-flex align-items-center justify-content-center me-3"><span
                                                         class="rounded-circle btn-sm-square border"><i
-                                                            class="fas fa-random"></i></span></a>
+                                                            class="fas fa-sync-alt"></i></span></a>
                                                 <a href="#"
                                                     class="text-primary d-flex align-items-center justify-content-center me-0"><span
                                                         class="rounded-circle btn-sm-square border"><i
@@ -710,13 +749,13 @@ foreach ($_SESSION['cart'] as $pid => $qty) {
                             $delay = 0.1;
                             if ($top_result && $top_result->num_rows > 0) {
                                 while($product = $top_result->fetch_assoc()) {
-                                    $product_id = htmlspecialchars($product['id']);
-                                    $product_name = htmlspecialchars($product['name']);
-                                    $product_price = number_format($product['price'], 2);
-                                    $original_price = number_format($product['original_price'], 2);
-                                    $image = htmlspecialchars($product['image']);
-                                    $category = htmlspecialchars($product['category']);
-                                    $category_id = htmlspecialchars($product['category_id']);
+                                    $product_id = htmlspecialchars($product['id'] ?? '');
+                                    $product_name = htmlspecialchars($product['name'] ?? '');
+                                    $product_price = isset($product['price']) ? number_format($product['price'], 2) : '0.00';
+                                    $original_price = isset($product['original_price']) ? number_format($product['original_price'], 2) : $product_price;
+                                    $image = htmlspecialchars($product['image'] ?? '');
+                                    $category = htmlspecialchars($product['category'] ?? '');
+                                    $category_id = htmlspecialchars($product['category_id'] ?? '');
                             ?>
                             <div class="col-md-6 col-lg-4 col-xl-3">
                                 <div class="product-item rounded wow fadeInUp" data-wow-delay="<?php echo $delay; ?>s">
@@ -753,7 +792,7 @@ foreach ($_SESSION['cart'] as $pid => $qty) {
                                                 <a href="#"
                                                     class="text-primary d-flex align-items-center justify-content-center me-3"><span
                                                         class="rounded-circle btn-sm-square border"><i
-                                                            class="fas fa-random"></i></span></a>
+                                                            class="fas fa-sync-alt"></i></span></a>
                                                 <a href="#"
                                                     class="text-primary d-flex align-items-center justify-content-center me-0"><span
                                                         class="rounded-circle btn-sm-square border"><i
@@ -810,7 +849,7 @@ foreach ($_SESSION['cart'] as $pid => $qty) {
                     <a class="btn btn-link" href="">About Us</a>
                     <a class="btn btn-link" href="">Contact Us</a>
                     <a class="btn btn-link" href="">Our Services</a>
-                    <a class="btn btn-link" href="">Terms & Condition</a>
+                    <a class="btn btn-link" href="">Terms &amp; Condition</a>
                     <a class="btn btn-link" href="">Support</a>
                 </div>
                 <div class="col-md-6 col-lg-6 col-xl-3 wow fadeInUp" data-wow-delay="0.7s">
@@ -857,5 +896,7 @@ foreach ($_SESSION['cart'] as $pid => $qty) {
 
 </html>
 <?php
-$conn->close();
+if ($conn) {
+    $conn->close();
+}
 ?>
