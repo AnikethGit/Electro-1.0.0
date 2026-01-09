@@ -1,21 +1,49 @@
 <?php
 /**
  * Database Connection Configuration
- * Uses PDO for secure database operations
+ * Uses MySQLi for secure database operations
  */
 
-// Database credentials
-define('DB_HOST', 'localhost');
-define('DB_USER', 'root');
-define('DB_PASS', '');
-define('DB_NAME', 'u701659873_distributor');
+// ============================================
+// HOSTINGER PRODUCTION DATABASE CREDENTIALS
+// ============================================
+// Update these with your actual Hostinger credentials
+// Find them in your cPanel > Databases > MySQL Databases
 
+$servername = "localhost"; // Usually 'localhost' on Hostinger
+$username = "u701659873_electro"; // Your database user (from cPanel)
+$password = "YourPassword123!"; // Your database password (from cPanel)
+$dbname = "u701659873_electro_shop"; // Your database name (from cPanel)
+
+// ============================================
+// MySQLi Connection Setup
+// ============================================
 try {
-    // Create PDO connection
+    $conn = new mysqli($servername, $username, $password, $dbname);
+    
+    // Check connection
+    if ($conn->connect_error) {
+        // Log error but don't show to user
+        error_log("Database Connection Error: " . $conn->connect_error);
+        die("Database connection failed. Please contact support.");
+    }
+    
+    // Set character encoding to UTF-8
+    $conn->set_charset("utf8mb4");
+    
+} catch (Exception $e) {
+    error_log("Database Exception: " . $e->getMessage());
+    die("Database error occurred. Please try again later.");
+}
+
+// ============================================
+// PDO Connection Setup (For other files that use PDO)
+// ============================================
+try {
     $pdo = new PDO(
-        "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4",
-        DB_USER,
-        DB_PASS,
+        "mysql:host=" . $servername . ";dbname=" . $dbname . ";charset=utf8mb4",
+        $username,
+        $password,
         [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
@@ -23,6 +51,7 @@ try {
         ]
     );
 } catch (PDOException $e) {
-    die('Database connection failed: ' . $e->getMessage());
+    error_log("PDO Connection Error: " . $e->getMessage());
+    die("Database connection failed. Please contact support.");
 }
 ?>
