@@ -1,9 +1,7 @@
 <?php
 // Include database configuration
 require_once 'config/db.php';
-
-// Session management
-session_start();
+// Session is already started in db.php, don't start it again!
 
 // Initialize cart if not exists
 if (!isset($_SESSION['cart'])) {
@@ -49,26 +47,81 @@ if ($stmt = $conn->prepare("SELECT * FROM products LIMIT 12")) {
     $stmt->close();
 }
 
-// Fetch new arrivals
+// Fetch new arrivals (check for actual column name in your database)
+// Try common column names: is_new, new, isnew
 $new_result = null;
-if ($stmt = $conn->prepare("SELECT * FROM products WHERE is_new = 1 LIMIT 12")) {
-    if ($stmt->execute()) {
-        $new_result = $stmt->get_result();
-    } else {
-        error_log("New arrivals query execute error: " . $stmt->error);
+$new_column = null;
+
+// Test which column exists
+$test_columns = ['is_new', 'new', 'isnew'];
+foreach ($test_columns as $col) {
+    $test_stmt = $conn->prepare("SELECT * FROM products WHERE " . $col . " = 1 LIMIT 1");
+    if ($test_stmt) {
+        $new_column = $col;
+        $test_stmt->close();
+        break;
     }
-    $stmt->close();
 }
 
-// Fetch top selling products
-$top_result = null;
-if ($stmt = $conn->prepare("SELECT * FROM products WHERE top_selling = 1 LIMIT 12")) {
-    if ($stmt->execute()) {
-        $top_result = $stmt->get_result();
-    } else {
-        error_log("Top selling query execute error: " . $stmt->error);
+// If no special "new" column, just get recent products
+if (!$new_column) {
+    if ($stmt = $conn->prepare("SELECT * FROM products ORDER BY id DESC LIMIT 12")) {
+        if ($stmt->execute()) {
+            $new_result = $stmt->get_result();
+        } else {
+            error_log("New arrivals query execute error: " . $stmt->error);
+        }
+        $stmt->close();
     }
-    $stmt->close();
+} else {
+    // Use the detected column
+    $query = "SELECT * FROM products WHERE " . $new_column . " = 1 LIMIT 12";
+    if ($stmt = $conn->prepare($query)) {
+        if ($stmt->execute()) {
+            $new_result = $stmt->get_result();
+        } else {
+            error_log("New arrivals query execute error: " . $stmt->error);
+        }
+        $stmt->close();
+    }
+}
+
+// Fetch top selling products (check for column)
+$top_result = null;
+$top_column = null;
+
+// Test which column exists for top selling
+$test_columns_top = ['top_selling', 'bestseller', 'topselling'];
+foreach ($test_columns_top as $col) {
+    $test_stmt = $conn->prepare("SELECT * FROM products WHERE " . $col . " = 1 LIMIT 1");
+    if ($test_stmt) {
+        $top_column = $col;
+        $test_stmt->close();
+        break;
+    }
+}
+
+// If no top selling column, just get random products
+if (!$top_column) {
+    if ($stmt = $conn->prepare("SELECT * FROM products ORDER BY RAND() LIMIT 12")) {
+        if ($stmt->execute()) {
+            $top_result = $stmt->get_result();
+        } else {
+            error_log("Top selling query execute error: " . $stmt->error);
+        }
+        $stmt->close();
+    }
+} else {
+    // Use the detected column
+    $query = "SELECT * FROM products WHERE " . $top_column . " = 1 LIMIT 12";
+    if ($stmt = $conn->prepare($query)) {
+        if ($stmt->execute()) {
+            $top_result = $stmt->get_result();
+        } else {
+            error_log("Top selling query execute error: " . $stmt->error);
+        }
+        $stmt->close();
+    }
 }
 
 // Handle Add to Cart
@@ -541,7 +594,7 @@ if (is_array($_SESSION['cart'])) {
                                     $image = htmlspecialchars($product['image'] ?? '');
                                     $category = htmlspecialchars($product['category'] ?? '');
                                     $category_id = htmlspecialchars($product['category_id'] ?? '');
-                                    $badge = isset($product['is_new']) && $product['is_new'] ? 'New' : (isset($product['on_sale']) && $product['on_sale'] ? 'Sale' : '');
+                                    $badge = '';
                             ?>
                             <div class="col-md-6 col-lg-4 col-xl-3">
                                 <div class="product-item rounded wow fadeInUp" data-wow-delay="<?php echo $delay; ?>s">
