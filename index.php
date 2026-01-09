@@ -10,11 +10,15 @@ if (!isset($_SESSION['cart'])) {
     $_SESSION['cart'] = array();
 }
 
-// Fetch categories from database with error handling
-$categories_result = null;
+// Fetch categories from database and store in array (not result set)
+$categories_array = array();
 if ($stmt = $conn->prepare("SELECT categories.id, categories.name, COUNT(*) as count FROM categories LEFT JOIN products ON categories.id = products.category_id GROUP BY categories.id LIMIT 5")) {
     if ($stmt->execute()) {
         $categories_result = $stmt->get_result();
+        // Store results in array for reuse
+        while($row = $categories_result->fetch_assoc()) {
+            $categories_array[] = $row;
+        }
     } else {
         error_log("Categories query execute error: " . $stmt->error);
     }
@@ -217,12 +221,8 @@ if (is_array($_SESSION['cart'])) {
                         <select class="form-select text-dark border-0 border-start rounded-0 p-3" name="category" style="width: 200px;">
                             <option value="">All Category</option>
                             <?php
-                            if ($categories_result && $categories_result->num_rows > 0) {
-                                while($cat = $categories_result->fetch_assoc()) {
-                                    echo "<option value='" . htmlspecialchars($cat['id']) . "'>" . htmlspecialchars($cat['name']) . "</option>";
-                                }
-                                // Reset pointer for later use
-                                $categories_result->data_seek(0);
+                            foreach($categories_array as $cat) {
+                                echo "<option value='" . htmlspecialchars($cat['id']) . "'>" . htmlspecialchars($cat['name']) . "</option>";
                             }
                             ?>
                         </select>
@@ -259,15 +259,13 @@ if (is_array($_SESSION['cart'])) {
                         <div class="navbar-nav ms-auto py-0">
                             <ul class="list-unstyled categories-bars">
                                 <?php
-                                if ($categories_result && $categories_result->num_rows > 0) {
-                                    while($cat = $categories_result->fetch_assoc()) {
-                                        echo "<li>
-                                            <div class='categories-bars-item'>
-                                                <a href='category.php?id=" . htmlspecialchars($cat['id']) . "'>" . htmlspecialchars($cat['name']) . "</a>
-                                                <span>(" . htmlspecialchars($cat['count']) . ")</span>
-                                            </div>
-                                        </li>";
-                                    }
+                                foreach($categories_array as $cat) {
+                                    echo "<li>
+                                        <div class='categories-bars-item'>
+                                            <a href='category.php?id=" . htmlspecialchars($cat['id']) . "'>" . htmlspecialchars($cat['name']) . "</a>
+                                            <span>(" . htmlspecialchars($cat['count']) . ")</span>
+                                        </div>
+                                    </li>";
                                 }
                                 ?>
                             </ul>
@@ -305,15 +303,13 @@ if (is_array($_SESSION['cart'])) {
                                 <div class="dropdown-menu m-0">
                                     <ul class="list-unstyled categories-bars">
                                         <?php
-                                        if ($categories_result && $categories_result->num_rows > 0) {
-                                            while($cat = $categories_result->fetch_assoc()) {
-                                                echo "<li>
-                                                    <div class='categories-bars-item'>
-                                                        <a href='category.php?id=" . htmlspecialchars($cat['id']) . "'>" . htmlspecialchars($cat['name']) . "</a>
-                                                        <span>(" . htmlspecialchars($cat['count']) . ")</span>
-                                                    </div>
-                                                </li>";
-                                            }
+                                        foreach($categories_array as $cat) {
+                                            echo "<li>
+                                                <div class='categories-bars-item'>
+                                                    <a href='category.php?id=" . htmlspecialchars($cat['id']) . "'>" . htmlspecialchars($cat['name']) . "</a>
+                                                    <span>(" . htmlspecialchars($cat['count']) . ")</span>
+                                                </div>
+                                            </li>";
                                         }
                                         ?>
                                     </ul>
