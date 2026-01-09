@@ -13,39 +13,58 @@ if (!isset($_SESSION['cart'])) {
 // Fetch categories from database with error handling
 $categories_result = null;
 if ($stmt = $conn->prepare("SELECT categories.id, categories.name, COUNT(*) as count FROM categories LEFT JOIN products ON categories.id = products.category_id GROUP BY categories.id LIMIT 5")) {
-    $stmt->execute();
-    $categories_result = $stmt->get_result();
+    if ($stmt->execute()) {
+        $categories_result = $stmt->get_result();
+    } else {
+        error_log("Categories query execute error: " . $stmt->error);
+    }
+    $stmt->close();
 } else {
-    error_log("Categories query error: " . $conn->error);
-    $categories_result = null;
+    error_log("Categories query prepare error: " . $conn->error);
 }
 
 // Fetch featured products
 $featured_result = null;
 if ($stmt = $conn->prepare("SELECT * FROM products WHERE featured = 1 LIMIT 4")) {
-    $stmt->execute();
-    $featured_result = $stmt->get_result();
+    if ($stmt->execute()) {
+        $featured_result = $stmt->get_result();
+    } else {
+        error_log("Featured products query execute error: " . $stmt->error);
+    }
+    $stmt->close();
 }
 
 // Fetch all products for main tab
 $all_products_result = null;
 if ($stmt = $conn->prepare("SELECT * FROM products LIMIT 12")) {
-    $stmt->execute();
-    $all_products_result = $stmt->get_result();
+    if ($stmt->execute()) {
+        $all_products_result = $stmt->get_result();
+    } else {
+        error_log("All products query execute error: " . $stmt->error);
+    }
+    $stmt->close();
 }
 
 // Fetch new arrivals
 $new_result = null;
 if ($stmt = $conn->prepare("SELECT * FROM products WHERE is_new = 1 LIMIT 12")) {
-    $stmt->execute();
-    $new_result = $stmt->get_result();
+    if ($stmt->execute()) {
+        $new_result = $stmt->get_result();
+    } else {
+        error_log("New arrivals query execute error: " . $stmt->error);
+    }
+    $stmt->close();
 }
 
 // Fetch top selling products
 $top_result = null;
 if ($stmt = $conn->prepare("SELECT * FROM products WHERE top_selling = 1 LIMIT 12")) {
-    $stmt->execute();
-    $top_result = $stmt->get_result();
+    if ($stmt->execute()) {
+        $top_result = $stmt->get_result();
+    } else {
+        error_log("Top selling query execute error: " . $stmt->error);
+    }
+    $stmt->close();
 }
 
 // Handle Add to Cart
@@ -70,12 +89,14 @@ if (is_array($_SESSION['cart'])) {
         
         if ($stmt = $conn->prepare("SELECT price FROM products WHERE id = ?")) {
             $stmt->bind_param("i", $pid);
-            $stmt->execute();
-            $price_result = $stmt->get_result();
-            
-            if ($price_result && $price_result->num_rows > 0) {
-                $row = $price_result->fetch_assoc();
-                $cart_total += floatval($row['price']) * $qty;
+            if ($stmt->execute()) {
+                $price_result = $stmt->get_result();
+                if ($price_result && $price_result->num_rows > 0) {
+                    $row = $price_result->fetch_assoc();
+                    $cart_total += floatval($row['price']) * $qty;
+                }
+            } else {
+                error_log("Cart price query execute error: " . $stmt->error);
             }
             $stmt->close();
         }
@@ -238,17 +259,14 @@ if (is_array($_SESSION['cart'])) {
                         <div class="navbar-nav ms-auto py-0">
                             <ul class="list-unstyled categories-bars">
                                 <?php
-                                if ($categories_result) {
-                                    $categories_result->data_seek(0);
-                                    if ($categories_result->num_rows > 0) {
-                                        while($cat = $categories_result->fetch_assoc()) {
-                                            echo "<li>
-                                                <div class='categories-bars-item'>
-                                                    <a href='category.php?id=" . htmlspecialchars($cat['id']) . "'>" . htmlspecialchars($cat['name']) . "</a>
-                                                    <span>(" . htmlspecialchars($cat['count']) . ")</span>
-                                                </div>
-                                            </li>";
-                                        }
+                                if ($categories_result && $categories_result->num_rows > 0) {
+                                    while($cat = $categories_result->fetch_assoc()) {
+                                        echo "<li>
+                                            <div class='categories-bars-item'>
+                                                <a href='category.php?id=" . htmlspecialchars($cat['id']) . "'>" . htmlspecialchars($cat['name']) . "</a>
+                                                <span>(" . htmlspecialchars($cat['count']) . ")</span>
+                                            </div>
+                                        </li>";
                                     }
                                 }
                                 ?>
@@ -287,17 +305,14 @@ if (is_array($_SESSION['cart'])) {
                                 <div class="dropdown-menu m-0">
                                     <ul class="list-unstyled categories-bars">
                                         <?php
-                                        if ($categories_result) {
-                                            $categories_result->data_seek(0);
-                                            if ($categories_result->num_rows > 0) {
-                                                while($cat = $categories_result->fetch_assoc()) {
-                                                    echo "<li>
-                                                        <div class='categories-bars-item'>
-                                                            <a href='category.php?id=" . htmlspecialchars($cat['id']) . "'>" . htmlspecialchars($cat['name']) . "</a>
-                                                            <span>(" . htmlspecialchars($cat['count']) . ")</span>
-                                                        </div>
-                                                    </li>";
-                                                }
+                                        if ($categories_result && $categories_result->num_rows > 0) {
+                                            while($cat = $categories_result->fetch_assoc()) {
+                                                echo "<li>
+                                                    <div class='categories-bars-item'>
+                                                        <a href='category.php?id=" . htmlspecialchars($cat['id']) . "'>" . htmlspecialchars($cat['name']) . "</a>
+                                                        <span>(" . htmlspecialchars($cat['count']) . ")</span>
+                                                    </div>
+                                                </li>";
                                             }
                                         }
                                         ?>
