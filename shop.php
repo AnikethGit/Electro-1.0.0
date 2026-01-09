@@ -41,7 +41,6 @@ if (is_array($_SESSION['cart'])) {
         }
     }
 }
-
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -70,156 +69,16 @@ if (is_array($_SESSION['cart'])) {
 
     <!-- Template Stylesheet -->
     <link href="css/style.css" rel="stylesheet">
-
-    <style>
-        .shop-container {
-            display: grid;
-            grid-template-columns: 250px 1fr;
-            gap: 30px;
-            padding: 40px 0;
-        }
-        .shop-sidebar {
-            background: #f9f9f9;
-            padding: 20px;
-            border-radius: 8px;
-            height: fit-content;
-            position: sticky;
-            top: 20px;
-        }
-        .filter-section {
-            margin-bottom: 30px;
-        }
-        .filter-section h5 {
-            font-weight: 600;
-            margin-bottom: 15px;
-            color: #333;
-        }
-        .filter-option {
-            margin-bottom: 10px;
-        }
-        .filter-option a {
-            color: #666;
-            text-decoration: none;
-            font-size: 14px;
-            display: block;
-            padding: 8px 0;
-            border-bottom: 1px solid #eee;
-            transition: color 0.3s;
-        }
-        .filter-option a:hover {
-            color: #0d6efd;
-        }
-        .shop-products {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 20px;
-        }
-        .product-card {
-            background: white;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            overflow: hidden;
-            transition: all 0.3s;
-        }
-        .product-card:hover {
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            transform: translateY(-5px);
-        }
-        .product-image {
-            width: 100%;
-            height: 180px;
-            object-fit: cover;
-            background: #f0f0f0;
-        }
-        .product-body {
-            padding: 15px;
-        }
-        .product-name {
-            font-weight: 600;
-            margin: 0 0 10px 0;
-            font-size: 14px;
-            color: #333;
-        }
-        .product-price {
-            color: #0d6efd;
-            font-weight: bold;
-            font-size: 16px;
-            margin: 10px 0;
-        }
-        .product-desc {
-            font-size: 12px;
-            color: #999;
-            margin: 10px 0;
-        }
-        .btn-add-cart {
-            background: #0d6efd;
-            color: white;
-            border: none;
-            padding: 8px 12px;
-            border-radius: 4px;
-            cursor: pointer;
-            width: 100%;
-            font-size: 13px;
-            transition: background 0.3s;
-        }
-        .btn-add-cart:hover {
-            background: #0b5ed7;
-        }
-        .btn-view {
-            display: inline-block;
-            margin-top: 8px;
-            color: #0d6efd;
-            text-decoration: none;
-            font-size: 12px;
-        }
-        .btn-view:hover {
-            text-decoration: underline;
-        }
-        .pagination {
-            display: flex;
-            justify-content: center;
-            gap: 5px;
-            margin-top: 40px;
-            padding: 20px 0;
-        }
-        .pagination a {
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            text-decoration: none;
-            color: #0d6efd;
-            transition: all 0.3s;
-        }
-        .pagination a:hover {
-            background: #0d6efd;
-            color: white;
-        }
-        .pagination a.active {
-            background: #0d6efd;
-            color: white;
-        }
-        .search-box {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            margin-bottom: 10px;
-        }
-        .btn-search {
-            width: 100%;
-            padding: 10px;
-            background: #0d6efd;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        .btn-search:hover {
-            background: #0b5ed7;
-        }
-    </style>
 </head>
 <body>
+    <!-- Spinner Start -->
+    <div id="spinner" class="show bg-white position-fixed translate-middle w-100 vh-100 top-50 start-50 d-flex align-items-center justify-content-center">
+        <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
+            <span class="sr-only">Loading...</span>
+        </div>
+    </div>
+    <!-- Spinner End -->
+
     <!-- Topbar Start -->
     <div class="container-fluid px-5 d-none border-bottom d-lg-block">
         <div class="row gx-0 align-items-center">
@@ -319,7 +178,7 @@ if (is_array($_SESSION['cart'])) {
                             <a href="cart.php" class="nav-item nav-link">Cart</a>
                             <a href="checkout.php" class="nav-item nav-link">Checkout</a>
                         </div>
-                        <a href="" class="btn btn-secondary rounded-pill py-2 px-4 px-lg-3 mb-3 mb-md-3 mb-lg-0"><i class="fa fa-mobile-alt me-2"></i> +0123 456 7890</a>
+                        <a href="#" class="btn btn-secondary rounded-pill py-2 px-4 px-lg-3 mb-3 mb-md-3 mb-lg-0"><i class="fa fa-mobile-alt me-2"></i> +0123 456 7890</a>
                     </div>
                 </nav>
             </div>
@@ -327,11 +186,93 @@ if (is_array($_SESSION['cart'])) {
     </div>
     <!-- Navbar & Hero End -->
 
+    <!-- Single Page Header start -->
+    <div class="container-fluid page-header py-5">
+        <h1 class="text-center text-white display-6 wow fadeInUp" data-wow-delay="0.1s">Shop Page</h1>
+        <ol class="breadcrumb justify-content-center mb-0 wow fadeInUp" data-wow-delay="0.3s">
+            <li class="breadcrumb-item"><a href="index.php">Home</a></li>
+            <li class="breadcrumb-item"><a href="#">Pages</a></li>
+            <li class="breadcrumb-item active text-white">Shop</li>
+        </ol>
+    </div>
+    <!-- Single Page Header End -->
+
+    <!-- Services Start -->
+    <div class="container-fluid px-0">
+        <div class="row g-0">
+            <div class="col-6 col-md-4 col-lg-2 border-start border-end wow fadeInUp" data-wow-delay="0.1s">
+                <div class="p-4">
+                    <div class="d-inline-flex align-items-center">
+                        <i class="fa fa-sync-alt fa-2x text-primary"></i>
+                        <div class="ms-4">
+                            <h6 class="text-uppercase mb-2">Free Return</h6>
+                            <p class="mb-0">30 days money back guarantee!</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2 border-end wow fadeInUp" data-wow-delay="0.2s">
+                <div class="p-4">
+                    <div class="d-flex align-items-center">
+                        <i class="fab fa-telegram-plane fa-2x text-primary"></i>
+                        <div class="ms-4">
+                            <h6 class="text-uppercase mb-2">Free Shipping</h6>
+                            <p class="mb-0">Free shipping on all order</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2 border-end wow fadeInUp" data-wow-delay="0.3s">
+                <div class="p-4">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-life-ring fa-2x text-primary"></i>
+                        <div class="ms-4">
+                            <h6 class="text-uppercase mb-2">Support 24/7</h6>
+                            <p class="mb-0">We support online 24 hrs a day</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2 border-end wow fadeInUp" data-wow-delay="0.4s">
+                <div class="p-4">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-credit-card fa-2x text-primary"></i>
+                        <div class="ms-4">
+                            <h6 class="text-uppercase mb-2">Receive Gift Card</h6>
+                            <p class="mb-0">Recieve gift all over oder $50</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2 border-end wow fadeInUp" data-wow-delay="0.5s">
+                <div class="p-4">
+                    <div class="d-flex align-items-center">
+                        <i class="fa fa-phone-alt fa-2x text-primary"></i>
+                        <div class="ms-4">
+                            <h6 class="text-uppercase mb-2">Contact Us</h6>
+                            <p class="mb-0">Shopiex@example.com</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2 border-end wow fadeInUp" data-wow-delay="0.6s">
+                <div class="p-4">
+                    <div class="d-flex align-items-center">
+                        <i class="fa fa-save fa-2x text-primary"></i>
+                        <div class="ms-4">
+                            <h6 class="text-uppercase mb-2">Secure Payment</h6>
+                            <p class="mb-0">100% secure transactions</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Services End -->
+
     <!-- Main Content Start -->
     <div class="container-fluid py-5">
         <div class="container">
-            <h1 class="mb-4">Shop Products</h1>
-            
             <?php foreach ($messages as $msg): ?>
                 <div class="alert alert-<?php echo $msg['type']; ?> alert-dismissible fade show" role="alert">
                     <?php echo htmlspecialchars($msg['text']); ?>
@@ -339,63 +280,89 @@ if (is_array($_SESSION['cart'])) {
                 </div>
             <?php endforeach; ?>
 
-            <div class="shop-container">
-                <!-- Sidebar Filters -->
-                <div class="shop-sidebar">
-                    <div class="filter-section">
-                        <h5><i class="fas fa-filter me-2"></i>Categories</h5>
-                        <div class="filter-option">
-                            <a href="shop.php">All Products</a>
-                        </div>
-                        <?php foreach ($categories as $cat): ?>
-                        <div class="filter-option">
-                            <a href="shop.php?category=<?php echo htmlspecialchars($cat['id']); ?>">
-                                <?php echo htmlspecialchars($cat['name']); ?>
-                            </a>
-                        </div>
-                        <?php endforeach; ?>
-                    </div>
-
-                    <div class="filter-section">
-                        <h5><i class="fas fa-search me-2"></i>Search</h5>
-                        <form method="get" action="shop.php">
-                            <input type="text" class="search-box" name="search" placeholder="Search products..." value="<?php echo htmlspecialchars($search ?? ''); ?>">
-                            <button type="submit" class="btn-search">Search</button>
+            <div class="row g-4">
+                <!-- Sidebar -->
+                <div class="col-lg-3 col-xl-2 wow fadeInUp" data-wow-delay="0.1s">
+                    <div class="input-group w-100 mx-auto d-flex mb-4">
+                        <form method="get" action="shop.php" class="w-100 d-flex">
+                            <input type="text" class="form-control p-3" name="search" placeholder="keywords" value="<?php echo htmlspecialchars($search ?? ''); ?>">
+                            <span class="input-group-text p-3"><i class="fa fa-search"></i></span>
                         </form>
+                    </div>
+                    <div class="product-categories mb-4">
+                        <h4>Products Categories</h4>
+                        <ul class="list-unstyled">
+                            <li>
+                                <div class="categories-item">
+                                    <a href="shop.php" class="text-dark"><i class="fas fa-apple-alt text-secondary me-2"></i>All Products</a>
+                                </div>
+                            </li>
+                            <?php foreach($categories as $cat): ?>
+                            <li>
+                                <div class="categories-item">
+                                    <a href="shop.php?category=<?php echo htmlspecialchars($cat['id']); ?>" class="text-dark"><i class="fas fa-apple-alt text-secondary me-2"></i><?php echo htmlspecialchars($cat['name']); ?></a>
+                                    <span>(<?php echo htmlspecialchars($cat['count'] ?? 0); ?>)</span>
+                                </div>
+                            </li>
+                            <?php endforeach; ?>
+                        </ul>
                     </div>
                 </div>
 
                 <!-- Products Grid -->
-                <div>
+                <div class="col-lg-9 col-xl-10 wow fadeInUp" data-wow-delay="0.1s">
                     <?php if (empty($products)): ?>
                         <div class="text-center py-5">
                             <p class="text-muted">No products found. Try adjusting your filters.</p>
                         </div>
                     <?php else: ?>
-                        <div class="shop-products">
+                        <div class="row g-4">
                             <?php foreach ($products as $product): ?>
-                            <div class="product-card">
-                                <?php if ($product['image_url']): ?>
-                                    <img src="<?php echo htmlspecialchars($product['image_url']); ?>" class="product-image" alt="<?php echo htmlspecialchars($product['name']); ?>">
-                                <?php else: ?>
-                                    <div class="product-image" style="display: flex; align-items: center; justify-content: center; background: #e0e0e0; color: #999;">No Image</div>
-                                <?php endif; ?>
-                                <div class="product-body">
-                                    <p class="product-name"><?php echo htmlspecialchars($product['name']); ?></p>
-                                    <p class="product-price"><?php echo format_price($product['price']); ?></p>
-                                    <p class="product-desc"><?php echo htmlspecialchars(substr($product['description'] ?? '', 0, 40)); ?>...</p>
-                                    
-                                    <?php if ($product['quantity'] > 0): ?>
-                                        <form method="post" action="cart_actions.php" style="display: inline;">
-                                            <input type="hidden" name="action" value="add">
-                                            <input type="hidden" name="product_id" value="<?php echo $product['id']; ?>">
-                                            <input type="hidden" name="quantity" value="1">
-                                            <button type="submit" class="btn-add-cart"><i class="fas fa-shopping-cart me-1"></i> Add</button>
-                                        </form>
-                                        <a href="single.php?id=<?php echo $product['id']; ?>" class="btn-view">View Details →</a>
-                                    <?php else: ?>
-                                        <button class="btn-add-cart" disabled style="background: #ccc; cursor: not-allowed;">Out of Stock</button>
-                                    <?php endif; ?>
+                            <div class="col-md-6 col-lg-6 col-xl-4">
+                                <div class="product-item rounded">
+                                    <div class="product-img border rounded position-relative overflow-hidden">
+                                        <?php if ($product['image_url']): ?>
+                                            <img src="<?php echo htmlspecialchars($product['image_url']); ?>" class="img-fluid rounded" alt="<?php echo htmlspecialchars($product['name']); ?>" style="height: 250px; object-fit: cover; width: 100%;">
+                                        <?php else: ?>
+                                            <div style="height: 250px; display: flex; align-items: center; justify-content: center; background: #f0f0f0; color: #999;">No Image</div>
+                                        <?php endif; ?>
+                                        <div class="product-action">
+                                            <a class="btn btn-primary" href="single.php?id=<?php echo $product['id']; ?>"><i class="fa fa-eye"></i></a>
+                                        </div>
+                                    </div>
+                                    <div class="text-center p-4">
+                                        <a href="single.php?id=<?php echo $product['id']; ?>" class="d-block mb-2"><?php echo htmlspecialchars($product['category_name'] ?? 'Uncategorized'); ?></a>
+                                        <a href="single.php?id=<?php echo $product['id']; ?>" class="d-block h4"><?php echo htmlspecialchars($product['name']); ?></a>
+                                        <p class="text-muted text-truncate mb-3"><?php echo htmlspecialchars(substr($product['description'] ?? '', 0, 50)); ?>...</p>
+                                        <div class="d-flex justify-content-center mb-3">
+                                            <h5 class="fw-bold me-2"><?php echo format_price($product['price']); ?></h5>
+                                        </div>
+                                    </div>
+                                    <div class="text-center p-4 pt-0">
+                                        <?php if ($product['quantity'] > 0): ?>
+                                            <form method="post" action="cart_actions.php" style="display: inline;">
+                                                <input type="hidden" name="action" value="add">
+                                                <input type="hidden" name="product_id" value="<?php echo $product['id']; ?>">
+                                                <input type="hidden" name="quantity" value="1">
+                                                <button type="submit" class="btn btn-primary border-secondary rounded-pill py-2 px-4 mb-4"><i class="fas fa-shopping-cart me-2"></i> Add To Cart</button>
+                                            </form>
+                                        <?php else: ?>
+                                            <button class="btn btn-secondary rounded-pill py-2 px-4 mb-4" disabled>Out of Stock</button>
+                                        <?php endif; ?>
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div class="d-flex">
+                                                <i class="fas fa-star text-primary"></i>
+                                                <i class="fas fa-star text-primary"></i>
+                                                <i class="fas fa-star text-primary"></i>
+                                                <i class="fas fa-star text-primary"></i>
+                                                <i class="fas fa-star"></i>
+                                            </div>
+                                            <div class="d-flex">
+                                                <a href="#" class="text-primary d-flex align-items-center justify-content-center me-3"><span class="rounded-circle btn-sm-square border"><i class="fas fa-sync-alt"></i></span></a>
+                                                <a href="#" class="text-primary d-flex align-items-center justify-content-center me-0"><span class="rounded-circle btn-sm-square border"><i class="fas fa-heart"></i></span></a>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             <?php endforeach; ?>
@@ -403,20 +370,26 @@ if (is_array($_SESSION['cart'])) {
 
                         <!-- Pagination -->
                         <?php if ($result['pages'] > 1): ?>
-                            <div class="pagination">
-                                <?php if ($result['current_page'] > 1): ?>
-                                    <a href="shop.php?page=1<?php echo $category ? '&category=' . $category : ''; ?><?php echo $search ? '&search=' . urlencode($search) : ''; ?>">« First</a>
-                                    <a href="shop.php?page=<?php echo $result['current_page'] - 1; ?><?php echo $category ? '&category=' . $category : ''; ?><?php echo $search ? '&search=' . urlencode($search) : ''; ?>">‹ Prev</a>
-                                <?php endif; ?>
+                            <div class="row">
+                                <div class="col-12 text-center py-5">
+                                    <nav>
+                                        <ul class="pagination justify-content-center mb-0">
+                                            <?php if ($result['current_page'] > 1): ?>
+                                                <li class="page-item"><a class="page-link" href="shop.php?page=1<?php echo $category ? '&category=' . $category : ''; ?><?php echo $search ? '&search=' . urlencode($search) : ''; ?>">First</a></li>
+                                                <li class="page-item"><a class="page-link" href="shop.php?page=<?php echo $result['current_page'] - 1; ?><?php echo $category ? '&category=' . $category : ''; ?><?php echo $search ? '&search=' . urlencode($search) : ''; ?>">Previous</a></li>
+                                            <?php endif; ?>
 
-                                <?php for ($i = 1; $i <= $result['pages']; $i++): ?>
-                                    <a href="shop.php?page=<?php echo $i; ?><?php echo $category ? '&category=' . $category : ''; ?><?php echo $search ? '&search=' . urlencode($search) : ''; ?>" class="<?php echo $i === $result['current_page'] ? 'active' : ''; ?>"><?php echo $i; ?></a>
-                                <?php endfor; ?>
+                                            <?php for ($i = 1; $i <= $result['pages']; $i++): ?>
+                                                <li class="page-item <?php echo $i === $result['current_page'] ? 'active' : ''; ?>"><a class="page-link" href="shop.php?page=<?php echo $i; ?><?php echo $category ? '&category=' . $category : ''; ?><?php echo $search ? '&search=' . urlencode($search) : ''; ?>"><?php echo $i; ?></a></li>
+                                            <?php endfor; ?>
 
-                                <?php if ($result['current_page'] < $result['pages']): ?>
-                                    <a href="shop.php?page=<?php echo $result['current_page'] + 1; ?><?php echo $category ? '&category=' . $category : ''; ?><?php echo $search ? '&search=' . urlencode($search) : ''; ?>">Next ›</a>
-                                    <a href="shop.php?page=<?php echo $result['pages']; ?><?php echo $category ? '&category=' . $category : ''; ?><?php echo $search ? '&search=' . urlencode($search) : ''; ?>">Last »</a>
-                                <?php endif; ?>
+                                            <?php if ($result['current_page'] < $result['pages']): ?>
+                                                <li class="page-item"><a class="page-link" href="shop.php?page=<?php echo $result['current_page'] + 1; ?><?php echo $category ? '&category=' . $category : ''; ?><?php echo $search ? '&search=' . urlencode($search) : ''; ?>">Next</a></li>
+                                                <li class="page-item"><a class="page-link" href="shop.php?page=<?php echo $result['pages']; ?><?php echo $category ? '&category=' . $category : ''; ?><?php echo $search ? '&search=' . urlencode($search) : ''; ?>">Last</a></li>
+                                            <?php endif; ?>
+                                        </ul>
+                                    </nav>
+                                </div>
                             </div>
                         <?php endif; ?>
                     <?php endif; ?>
