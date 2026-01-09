@@ -1,22 +1,6 @@
 <?php
-// Database connection
-$servername = "localhost";
-$username = "root";
-$password = "";
-$dbname = "electro_shop";
-
-try {
-    $conn = new mysqli($servername, $username, $password, $dbname);
-    
-    // Set character encoding to UTF-8
-    $conn->set_charset("utf8mb4");
-    
-    if ($conn->connect_error) {
-        die("Connection failed: " . $conn->connect_error);
-    }
-} catch (Exception $e) {
-    die("Database connection error: " . $e->getMessage());
-}
+// Include database configuration
+require_once 'config/db.php';
 
 // Session management
 session_start();
@@ -32,6 +16,7 @@ if ($stmt = $conn->prepare("SELECT id, name, COUNT(*) as count FROM categories L
     $stmt->execute();
     $categories_result = $stmt->get_result();
 } else {
+    error_log("Categories query error: " . $conn->error);
     $categories_result = null;
 }
 
@@ -102,7 +87,7 @@ if (is_array($_SESSION['cart'])) {
 
 <head>
     <meta charset="utf-8">
-    <title>Shopspree</title>
+    <title>Shopspree - Online Electronics Store</title>
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <meta content="" name="keywords">
     <meta content="" name="description">
@@ -276,7 +261,7 @@ if (is_array($_SESSION['cart'])) {
                 <nav class="navbar navbar-expand-lg navbar-light bg-primary ">
                     <a href="" class="navbar-brand d-block d-lg-none">
                         <h1 class="display-5 text-secondary m-0"><i
-                                class="fas fa-shopping-bag text-white me-2"></i>Electro</h1>
+                                class="fas fa-shopping-bag text-white me-2"></i>Shopspree</h1>
                     </a>
                     <button class="navbar-toggler ms-auto" type="button" data-bs-toggle="collapse"
                         data-bs-target="#navbarCollapse">
@@ -290,13 +275,13 @@ if (is_array($_SESSION['cart'])) {
                             <div class="nav-item dropdown">
                                 <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown">Pages</a>
                                 <div class="dropdown-menu m-0">
-                                    <a href="bestseller.php" class="dropdown-item">Bestseller</a>
+                                    <a href="shop.php" class="dropdown-item">All Products</a>
                                     <a href="cart.php" class="dropdown-item">Cart Page</a>
                                     <a href="checkout.php" class="dropdown-item">Checkout</a>
                                     <a href="404.html" class="dropdown-item">404 Page</a>
                                 </div>
                             </div>
-                            <a href="contact.html" class="nav-item nav-link me-2">Contact</a>
+                            <a href="index.php#contact" class="nav-item nav-link me-2">Contact</a>
                             <div class="nav-item dropdown d-block d-lg-none mb-3">
                                 <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown">All Category</a>
                                 <div class="dropdown-menu m-0">
