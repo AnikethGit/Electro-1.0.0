@@ -1,6 +1,9 @@
 # Electro E-Commerce Platform
 # Apache Configuration & Security Settings
 
+# Set DirectoryIndex to serve PHP files as homepage
+DirectoryIndex index.php index.html
+
 # Enable mod_rewrite
 <IfModule mod_rewrite.c>
     RewriteEngine On
@@ -10,33 +13,22 @@
     # RewriteCond %{HTTPS} off
     # RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
     
-    # Remove .php extension
+    # Remove .php extension from URLs
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteRule ^([a-zA-Z0-9_-]+)/?$ $1.php [QSA,L]
-    
-    # Remove .html extension
-    RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteRule ^([a-zA-Z0-9_-]+)/?$ $1.html [QSA,L]
     
     # Route API requests
     RewriteCond %{REQUEST_URI} ^/api/ [NC]
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteRule ^api/(.+)$ api/$1.php [QSA,L]
-else
-    RewriteEngine Off
 </IfModule>
 
 # Block access to config directory
 <FilesMatch "^config">
     Order Allow,Deny
     Deny from all
-else
-    <FilesMatch "\.php$">
-        Deny from all
-    </FilesMatch>
 </FilesMatch>
 
 # Prevent access to sensitive files
@@ -47,7 +39,9 @@ else
 
 # Allow access to images, CSS, JS
 <FilesMatch "\.(jpg|jpeg|png|gif|css|js|ico|svg|woff|woff2|ttf|eot)$">
-    Header set Cache-Control "max-age=31536000, public"
+    <IfModule mod_headers.c>
+        Header set Cache-Control "max-age=31536000, public"
+    </IfModule>
 </FilesMatch>
 
 # Set proper MIME types
@@ -56,8 +50,6 @@ else
     AddType text/css css
     AddType image/svg+xml svg svgz
     AddEncoding gzip svgz
-else
-    AddType application/x-httpd-php .php
 </IfModule>
 
 # Enable gzip compression
@@ -69,7 +61,6 @@ else
     AddOutputFilterByType DEFLATE text/javascript
     AddOutputFilterByType DEFLATE application/javascript
     AddOutputFilterByType DEFLATE application/json
-else
 </IfModule>
 
 # Security headers
@@ -83,7 +74,6 @@ else
     # Remove server information
     Header always unset X-Powered-By
     Header unset X-Powered-By
-else
 </IfModule>
 
 # Disable directory listing
@@ -104,12 +94,16 @@ AddDefaultCharset utf-8
 
 # Cache control for HTML files
 <FilesMatch "\.html?$">
-    Header set Cache-Control "max-age=3600, must-revalidate"
+    <IfModule mod_headers.c>
+        Header set Cache-Control "max-age=3600, must-revalidate"
+    </IfModule>
 </FilesMatch>
 
-# No cache for PHP files
+# Cache control for PHP files
 <FilesMatch "\.php$">
-    Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
-    Header set Pragma "no-cache"
-    Header set Expires "0"
+    <IfModule mod_headers.c>
+        Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+        Header set Pragma "no-cache"
+        Header set Expires "0"
+    </IfModule>
 </FilesMatch>
