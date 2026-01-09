@@ -12,7 +12,7 @@ if (!isset($_SESSION['cart'])) {
 
 // Fetch categories from database with error handling
 $categories_result = null;
-if ($stmt = $conn->prepare("SELECT id, name, COUNT(*) as count FROM categories LEFT JOIN products ON categories.id = products.category_id GROUP BY categories.id LIMIT 5")) {
+if ($stmt = $conn->prepare("SELECT categories.id, categories.name, COUNT(*) as count FROM categories LEFT JOIN products ON categories.id = products.category_id GROUP BY categories.id LIMIT 5")) {
     $stmt->execute();
     $categories_result = $stmt->get_result();
 } else {
