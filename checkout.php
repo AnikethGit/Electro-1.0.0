@@ -236,6 +236,7 @@ try {
 
             <div class="row g-5">
                 <div class="col-md-12 col-lg-8">
+                    <!-- Single form containing ALL checkout fields -->
                     <form method="post" action="orders/create.php">
                         <h5 class="mb-4">Billing Details</h5>
                         <div class="row g-3">
@@ -296,8 +297,42 @@ try {
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Payment Method Section Inside Form -->
+                        <h5 class="mb-4 mt-5">Payment Method</h5>
+                        <div class="row g-4 text-start mb-4">
+                            <div class="col-12">
+                                <div class="form-check">
+                                    <input class="form-check-input bg-primary border-0" type="radio" name="payment_method" id="COD" value="COD" checked>
+                                    <label class="form-check-label pt-1" for="COD">
+                                        Cash on Delivery (COD)
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-check">
+                                    <input class="form-check-input bg-primary border-0" type="radio" name="payment_method" id="Card" value="Credit Card">
+                                    <label class="form-check-label pt-1" for="Card">
+                                        Credit/Debit Card
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-check">
+                                    <input class="form-check-input bg-primary border-0" type="radio" name="payment_method" id="Bank" value="Bank Transfer">
+                                    <label class="form-check-label pt-1" for="Bank">
+                                        Bank Transfer
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Submit Button Inside Form -->
+                        <button type="submit" class="btn btn-primary rounded-pill px-4 py-3 text-uppercase w-100" name="placeOrder">Place Order</button>
                     </form>
                 </div>
+
+                <!-- Order Summary Sidebar -->
                 <div class="col-md-12 col-lg-4">
                     <div class="table-responsive">
                         <table class="table">
@@ -357,74 +392,12 @@ try {
                             </tbody>
                         </table>
                     </div>
-                    <div class="row g-4 text-center align-items-center justify-content-center pt-4">
-                        <div class="col-sm-8 col-md-7 col-lg-12">
-                            <div class="d-flex justify-content-between">
-                                <h5 class="mb-0 me-4">Payment Method:</h5>
-                            </div>
-                            <div class="row g-4 text-start">
-                                <div class="col-12">
-                                    <div class="form-check">
-                                        <input class="form-check-input bg-primary border-0" type="radio" name="payment_method" id="COD" value="COD" checked>
-                                        <label class="form-check-label pt-1" for="COD">
-                                            Cash on Delivery (COD)
-                                        </label>
-                                    </div>
-                                </div>
-                                <div class="col-12">
-                                    <div class="form-check">
-                                        <input class="form-check-input bg-primary border-0" type="radio" name="payment_method" id="Card" value="Credit Card">
-                                        <label class="form-check-label pt-1" for="Card">
-                                            Credit/Debit Card
-                                        </label>
-                                    </div>
-                                </div>
-                                <div class="col-12">
-                                    <div class="form-check">
-                                        <input class="form-check-input bg-primary border-0" type="radio" name="payment_method" id="Bank" value="Bank Transfer">
-                                        <label class="form-check-label pt-1" for="Bank">
-                                            Bank Transfer
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <form method="post" action="orders/create.php" class="mt-4">
-                        <input type="hidden" name="payment_method" value="COD">
-                        <button type="submit" class="btn btn-primary rounded-pill px-4 py-3 text-uppercase w-100" name="placeOrder">Place Order</button>
-                    </form>
                     <a href="cart.php" class="btn btn-outline-primary rounded-pill px-4 py-3 text-uppercase w-100 mt-2">Back to Cart</a>
                 </div>
             </div>
         </div>
     </div>
     <!-- Checkout Page End -->
-
-    <!-- Footer Start -->
-    <div class="container-fluid footer py-5 wow fadeIn" data-wow-delay="0.2s">
-        <div class="container py-5">
-            <div class="row g-5">
-                <div class="col-md-6 col-lg-6 col-xl-3">
-                    <div class="footer-item d-flex flex-column">
-                        <h4 class="text-primary mb-4">Customer Service</h4>
-                        <a href="#"><i class="fas fa-angle-right me-2"></i> Contact Us</a>
-                        <a href="#"><i class="fas fa-angle-right me-2"></i> Returns</a>
-                        <a href="#"><i class="fas fa-angle-right me-2"></i> Order History</a>
-                    </div>
-                </div>
-                <div class="col-md-6 col-lg-6 col-xl-3">
-                    <div class="footer-item d-flex flex-column">
-                        <h4 class="text-primary mb-4">Information</h4>
-                        <a href="#"><i class="fas fa-angle-right me-2"></i> About Us</a>
-                        <a href="#"><i class="fas fa-angle-right me-2"></i> Privacy Policy</a>
-                        <a href="#"><i class="fas fa-angle-right me-2"></i> Terms & Conditions</a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <!-- Footer End -->
 
     <!-- Back to Top -->
     <a href="#" class="btn btn-primary btn-lg-square back-to-top"><i class="fa fa-arrow-up"></i></a>
