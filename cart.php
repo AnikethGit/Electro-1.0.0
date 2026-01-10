@@ -2,7 +2,36 @@
 require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/config/helpers.php';
 require_once __DIR__ . '/cart/get_cart.php';
-require_once __DIR__ . '/cart/cart_handler.php';
+
+// Initialize SESSION cart if not exists
+if (!isset($_SESSION['cart']) || !is_array($_SESSION['cart'])) {
+    $_SESSION['cart'] = [];
+}
+
+// Handle cart updates from forms
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    if (isset($_POST['action']) && isset($_POST['product_id'])) {
+        $action = htmlspecialchars($_POST['action']);
+        $product_id = intval($_POST['product_id']);
+        $qty = isset($_POST['qty']) ? intval($_POST['qty']) : 1;
+        
+        if ($action == 'update') {
+            // Update quantity
+            if ($qty <= 0) {
+                unset($_SESSION['cart'][$product_id]);
+            } else {
+                $_SESSION['cart'][$product_id] = $qty;
+            }
+        } elseif ($action == 'remove') {
+            // Remove from cart
+            unset($_SESSION['cart'][$product_id]);
+        }
+        
+        // Redirect to prevent form resubmission
+        header('Location: cart.php');
+        exit;
+    }
+}
 
 $messages = get_messages();
 $cart_summary = get_cart_summary();
@@ -338,12 +367,12 @@ if (is_array($_SESSION['cart'])) {
                                 <p class="mb-0 py-4">Model</p>
                             </td>
                             <td>
-                                <p class="mb-0 py-4"><?php echo format_price($item['price']); ?></p>
+                                <p class="mb-0 py-4">$<?php echo number_format($item['price'], 2); ?></p>
                             </td>
                             <td>
                                 <div class="input-group quantity py-4" style="width: 100px;">
                                     <div class="input-group-btn">
-                                        <form method="post" action="cart_actions.php" style="display: inline;">
+                                        <form method="post" style="display: inline;">
                                             <input type="hidden" name="action" value="update">
                                             <input type="hidden" name="product_id" value="<?php echo $item['id']; ?>">
                                             <button class="btn btn-sm btn-minus rounded-circle bg-light border" type="submit" name="qty" value="<?php echo $item['quantity'] - 1; ?>">
@@ -354,7 +383,7 @@ if (is_array($_SESSION['cart'])) {
                                     <input type="text" class="form-control form-control-sm text-center border-0"
                                         value="<?php echo $item['quantity']; ?>" readonly>
                                     <div class="input-group-btn">
-                                        <form method="post" action="cart_actions.php" style="display: inline;">
+                                        <form method="post" style="display: inline;">
                                             <input type="hidden" name="action" value="update">
                                             <input type="hidden" name="product_id" value="<?php echo $item['id']; ?>">
                                             <button class="btn btn-sm btn-plus rounded-circle bg-light border" type="submit" name="qty" value="<?php echo $item['quantity'] + 1; ?>">
@@ -365,10 +394,10 @@ if (is_array($_SESSION['cart'])) {
                                 </div>
                             </td>
                             <td>
-                                <p class="mb-0 py-4"><?php echo format_price($item['price'] * $item['quantity']); ?></p>
+                                <p class="mb-0 py-4">$<?php echo number_format($item['price'] * $item['quantity'], 2); ?></p>
                             </td>
                             <td class="py-4">
-                                <form method="post" action="cart_actions.php" style="display: inline;">
+                                <form method="post" style="display: inline;">
                                     <input type="hidden" name="action" value="remove">
                                     <input type="hidden" name="product_id" value="<?php echo $item['id']; ?>">
                                     <button class="btn btn-md rounded-circle bg-light border" type="submit" onclick="return confirm('Remove this item?');">
@@ -393,19 +422,19 @@ if (is_array($_SESSION['cart'])) {
                             <h1 class="display-6 mb-4">Cart <span class="fw-normal">Total</span></h1>
                             <div class="d-flex justify-content-between mb-4">
                                 <h5 class="mb-0 me-4">Subtotal:</h5>
-                                <p class="mb-0"><?php echo format_price($totals['subtotal']); ?></p>
+                                <p class="mb-0">$<?php echo number_format($totals['subtotal'], 2); ?></p>
                             </div>
                             <div class="d-flex justify-content-between">
                                 <h5 class="mb-0 me-4">Shipping</h5>
                                 <div>
-                                    <p class="mb-0">Flat rate: <?php echo format_price($totals['shipping']); ?></p>
+                                    <p class="mb-0">Flat rate: $<?php echo number_format($totals['shipping'], 2); ?></p>
                                 </div>
                             </div>
                             <p class="mb-0 text-end">Shipping to USA.</p>
                         </div>
                         <div class="py-4 mb-4 border-top border-bottom d-flex justify-content-between">
                             <h5 class="mb-0 ps-4 me-4">Total</h5>
-                            <p class="mb-0 pe-4"><?php echo format_price($totals['total']); ?></p>
+                            <p class="mb-0 pe-4">$<?php echo number_format($totals['total'], 2); ?></p>
                         </div>
                         <form method="post" action="checkout.php">
                             <button class="btn btn-primary rounded-pill px-4 py-3 text-uppercase mb-4 ms-4"
