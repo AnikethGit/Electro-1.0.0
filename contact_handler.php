@@ -7,10 +7,15 @@
 require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/config/helpers.php';
 
-header('Content-Type: application/json');
+// Handle both regular form and AJAX requests
+$is_ajax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    echo json_encode(['success' => false, 'message' => 'Invalid request method']);
+    if ($is_ajax) {
+        echo json_encode(['success' => false, 'message' => 'Invalid request method']);
+    } else {
+        redirect('contact.php');
+    }
     exit();
 }
 
@@ -29,13 +34,23 @@ try {
     }
 
     if (!empty($errors)) {
-        echo json_encode(['success' => false, 'errors' => $errors]);
+        if ($is_ajax) {
+            echo json_encode(['success' => false, 'errors' => $errors]);
+        } else {
+            add_message(implode(', ', $errors), 'error');
+            redirect('contact.php');
+        }
         exit();
     }
 
     // Validate email
     if (!is_valid_email($data['email'])) {
-        echo json_encode(['success' => false, 'message' => 'Invalid email address']);
+        if ($is_ajax) {
+            echo json_encode(['success' => false, 'message' => 'Invalid email address']);
+        } else {
+            add_message('Invalid email address', 'error');
+            redirect('contact.php');
+        }
         exit();
     }
 
@@ -44,27 +59,45 @@ try {
 
     // Validate message length
     if (strlen($data['message']) < 10) {
-        echo json_encode(['success' => false, 'message' => 'Message must be at least 10 characters long']);
+        if ($is_ajax) {
+            echo json_encode(['success' => false, 'message' => 'Message must be at least 10 characters long']);
+        } else {
+            add_message('Message must be at least 10 characters long', 'error');
+            redirect('contact.php');
+        }
         exit();
     }
 
     if (strlen($data['message']) > 5000) {
-        echo json_encode(['success' => false, 'message' => 'Message must not exceed 5000 characters']);
+        if ($is_ajax) {
+            echo json_encode(['success' => false, 'message' => 'Message must not exceed 5000 characters']);
+        } else {
+            add_message('Message must not exceed 5000 characters', 'error');
+            redirect('contact.php');
+        }
         exit();
     }
 
-    // Save to database
-    $stmt = $pdo->prepare(
-        "INSERT INTO contacts (name, email, phone, subject, message, created_at) 
-         VALUES (?, ?, ?, ?, ?, NOW())"
-    );
-    $stmt->execute([
-        $data['name'],
-        $data['email'],
-        $data['phone'],
-        $data['subject'],
-        $data['message']
-    ]);
+    // Check if contacts table exists and insert if it does
+    $table_exists = $conn->query("SHOW TABLES LIKE 'contacts'") !== false && $conn->affected_rows > 0;
+    
+    if ($table_exists) {
+        $stmt = $conn->prepare(
+            "INSERT INTO contacts (name, email, phone, subject, message, created_at) 
+             VALUES (?, ?, ?, ?, ?, NOW())"
+        );
+        if ($stmt) {
+            $stmt->bind_param("sssss", 
+                $data['name'],
+                $data['email'],
+                $data['phone'],
+                $data['subject'],
+                $data['message']
+            );
+            $stmt->execute();
+            $stmt->close();
+        }
+    }
 
     // Send email to admin
     $admin_email = 'admin@electro.com';
@@ -85,7 +118,7 @@ try {
     $headers .= "Reply-To: " . $data['email'] . "\r\n";
     $headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
     
-    // Send email
+    // Send email to admin (suppress errors)
     @mail($admin_email, $subject, $email_body, $headers);
     
     // Send confirmation email to user
@@ -102,17 +135,28 @@ try {
     
     @mail($data['email'], $user_subject, $user_body, $user_headers);
     
-    echo json_encode([
-        'success' => true,
-        'message' => 'Thank you for your message! We will get back to you shortly.'
-    ]);
+    // Send response
+    if ($is_ajax) {
+        echo json_encode([
+            'success' => true,
+            'message' => 'Thank you for your message! We will get back to you shortly.'
+        ]);
+    } else {
+        add_message('Thank you for your message! We will get back to you shortly.', 'success');
+        redirect('contact.php');
+    }
     
 } catch (Exception $e) {
     error_log('Contact form error: ' . $e->getMessage());
-    echo json_encode([
-        'success' => false,
-        'message' => 'An error occurred while processing your request. Please try again later.'
-    ]);
+    if ($is_ajax) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'An error occurred while processing your request. Please try again later.'
+        ]);
+    } else {
+        add_message('An error occurred while processing your request. Please try again later.', 'error');
+        redirect('contact.php');
+    }
 }
 
 ?>
