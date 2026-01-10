@@ -8,6 +8,23 @@ if (!isset($_SESSION['cart'])) {
     $_SESSION['cart'] = array();
 }
 
+// Handle Add to Cart BEFORE ANY OUTPUT
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_to_cart'])) {
+    $product_id = isset($_POST['product_id']) ? intval($_POST['product_id']) : 0;
+    $qty = isset($_POST['qty']) ? intval($_POST['qty']) : 1;
+    
+    if ($product_id > 0 && $qty > 0) {
+        if (!isset($_SESSION['cart'][$product_id])) {
+            $_SESSION['cart'][$product_id] = 0;
+        }
+        $_SESSION['cart'][$product_id] += $qty;
+    }
+    
+    // Redirect to refresh page and show updated cart
+    header('Location: ' . $_SERVER['PHP_SELF']);
+    exit;
+}
+
 // Fetch categories from database and store in array (not result set)
 $categories_array = array();
 if ($stmt = $conn->prepare("SELECT categories.id, categories.name, COUNT(*) as count FROM categories LEFT JOIN products ON categories.id = products.category_id GROUP BY categories.id LIMIT 5")) {
@@ -143,19 +160,6 @@ if ($top_column_found) {
             error_log("Top selling fallback query execute error: " . $stmt->error);
         }
         $stmt->close();
-    }
-}
-
-// Handle Add to Cart
-if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_to_cart'])) {
-    $product_id = isset($_POST['product_id']) ? intval($_POST['product_id']) : 0;
-    $qty = isset($_POST['qty']) ? intval($_POST['qty']) : 1;
-    
-    if ($product_id > 0 && $qty > 0) {
-        if (!isset($_SESSION['cart'][$product_id])) {
-            $_SESSION['cart'][$product_id] = 0;
-        }
-        $_SESSION['cart'][$product_id] += $qty;
     }
 }
 
