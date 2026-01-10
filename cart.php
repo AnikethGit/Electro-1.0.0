@@ -3,9 +3,83 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 try {
+    // Only load absolutely necessary files
     require_once __DIR__ . '/config/db.php';
     require_once __DIR__ . '/config/helpers.php';
-    require_once __DIR__ . '/cart/get_cart.php';
+    
+    // Inline cart functions to avoid dependencies
+    function get_cart_items() {
+        global $conn;
+        
+        if (!isset($_SESSION['cart'])) {
+            return [];
+        }
+        
+        if (!is_array($_SESSION['cart']) || count($_SESSION['cart']) === 0) {
+            return [];
+        }
+        
+        $cart_items = [];
+        
+        foreach ($_SESSION['cart'] as $product_id => $quantity) {
+            $product_id = intval($product_id);
+            $quantity = intval($quantity);
+            
+            if ($quantity <= 0 || $product_id <= 0) {
+                continue;
+            }
+            
+            $query = "SELECT id, name, price FROM products WHERE id = ?";
+            
+            if ($stmt = $conn->prepare($query)) {
+                $stmt->bind_param("i", $product_id);
+                
+                if ($stmt->execute()) {
+                    $result = $stmt->get_result();
+                    
+                    if ($result && $result->num_rows > 0) {
+                        $product = $result->fetch_assoc();
+                        
+                        $cart_items[] = [
+                            'id' => intval($product['id']),
+                            'name' => htmlspecialchars($product['name']),
+                            'price' => floatval($product['price']),
+                            'quantity' => $quantity
+                        ];
+                    }
+                }
+                
+                $stmt->close();
+            }
+        }
+        
+        return $cart_items;
+    }
+    
+    function calculate_cart_totals($cart_items, $tax_rate = 0.08, $shipping = 50) {
+        $subtotal = 0.0;
+        
+        if (is_array($cart_items)) {
+            foreach ($cart_items as $item) {
+                $price = isset($item['price']) ? floatval($item['price']) : 0;
+                $qty = isset($item['quantity']) ? intval($item['quantity']) : 0;
+                $subtotal += ($price * $qty);
+            }
+        }
+        
+        $subtotal = round($subtotal, 2);
+        $tax = round($subtotal * floatval($tax_rate), 2);
+        $total = round($subtotal + $tax + floatval($shipping), 2);
+        
+        return [
+            'subtotal' => $subtotal,
+            'tax' => $tax,
+            'tax_rate' => floatval($tax_rate) * 100,
+            'shipping' => floatval($shipping),
+            'total' => $total,
+            'item_count' => count($cart_items)
+        ];
+    }
     
     // Initialize SESSION cart if not exists
     if (!isset($_SESSION['cart']) || !is_array($_SESSION['cart'])) {
@@ -35,10 +109,8 @@ try {
     }
     
     $messages = get_messages();
-    $cart_summary = get_cart_summary();
-    $cart_items = $cart_summary['items'];
-    $totals = $cart_summary['totals'];
-    $cart_count = $totals['item_count'];
+    $cart_items = get_cart_items();
+    $totals = calculate_cart_totals($cart_items);
     $cart_total = $totals['total'];
     
 } catch (Exception $e) {
@@ -53,19 +125,21 @@ try {
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <link href="css/bootstrap.min.css" rel="stylesheet">
     <link href="css/style.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.4/css/all.css" />
 </head>
 <body>
     <!-- Topbar Start -->
-    <div class="container-fluid px-5 py-3">
+    <div class="container-fluid px-5 py-3 bg-light">
         <div class="row gx-0 align-items-center">
             <div class="col-md-4">
                 <a href="index.php" class="navbar-brand p-0">
-                    <h1 class="display-5 text-primary m-0"><i class="fas fa-shopping-bag text-secondary me-2"></i>Electro</h1>
+                    <h1 class="display-6 text-primary m-0"><i class="fas fa-shopping-bag text-secondary me-2"></i>Electro</h1>
                 </a>
             </div>
             <div class="col-md-8 text-end">
                 <a href="cart.php" class="btn btn-outline-primary"><i class="fas fa-shopping-cart me-2"></i>Cart: $<?php echo number_format($cart_total, 2); ?></a>
                 <a href="shop.php" class="btn btn-outline-primary ms-2">Shop</a>
+                <a href="index.php" class="btn btn-outline-primary ms-2">Home</a>
             </div>
         </div>
     </div>
@@ -74,7 +148,7 @@ try {
     <!-- Page Header -->
     <div class="container-fluid bg-primary text-white py-5">
         <div class="container">
-            <h1>Shopping Cart</h1>
+            <h1 class="mb-0">Shopping Cart</h1>
         </div>
     </div>
 
@@ -87,7 +161,7 @@ try {
             </div>
         <?php endforeach; ?>
 
-        <?php if ($cart_summary['is_empty']): ?>
+        <?php if (count($cart_items) === 0): ?>
             <div class="text-center py-5">
                 <i class="fas fa-shopping-cart" style="font-size: 64px; color: #ccc; margin: 20px 0;"></i>
                 <p style="font-size: 20px; color: #666;">Your cart is empty</p>
@@ -172,12 +246,11 @@ try {
     <!-- Footer -->
     <footer class="bg-dark text-white py-4 mt-5">
         <div class="container text-center">
-            <p>&copy; 2026 Electro Shop. All rights reserved.</p>
+            <p class="mb-0">&copy; 2026 Electro Shop. All rights reserved.</p>
         </div>
     </footer>
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="js/main.js"></script>
 </body>
 </html>
