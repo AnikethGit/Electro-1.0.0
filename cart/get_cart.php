@@ -14,7 +14,11 @@ require_once __DIR__ . '/../config/helpers.php';
 function get_cart_items() {
     global $conn;
     
-    if (!is_array($_SESSION['cart']) || empty($_SESSION['cart'])) {
+    if (!isset($_SESSION['cart'])) {
+        return [];
+    }
+    
+    if (!is_array($_SESSION['cart']) || count($_SESSION['cart']) === 0) {
         return [];
     }
     
@@ -24,24 +28,31 @@ function get_cart_items() {
         $product_id = intval($product_id);
         $quantity = intval($quantity);
         
-        if ($quantity <= 0) continue;
+        if ($quantity <= 0 || $product_id <= 0) {
+            continue;
+        }
         
         // Get product details from database
-        if ($stmt = $conn->prepare("SELECT id, name, price, image FROM products WHERE id = ?")) {
+        $query = "SELECT id, name, price FROM products WHERE id = ?";
+        
+        if ($stmt = $conn->prepare($query)) {
             $stmt->bind_param("i", $product_id);
+            
             if ($stmt->execute()) {
                 $result = $stmt->get_result();
+                
                 if ($result && $result->num_rows > 0) {
                     $product = $result->fetch_assoc();
+                    
                     $cart_items[] = [
-                        'id' => $product['id'],
-                        'name' => $product['name'],
+                        'id' => intval($product['id']),
+                        'name' => htmlspecialchars($product['name']),
                         'price' => floatval($product['price']),
-                        'quantity' => $quantity,
-                        'image' => $product['image']
+                        'quantity' => $quantity
                     ];
                 }
             }
+            
             $stmt->close();
         }
     }
@@ -57,20 +68,25 @@ function get_cart_items() {
  * @return array Totals: subtotal, tax, shipping, total
  */
 function calculate_cart_totals($cart_items, $tax_rate = 0.08, $shipping = 50) {
-    $subtotal = 0;
+    $subtotal = 0.0;
     
-    foreach ($cart_items as $item) {
-        $subtotal += floatval($item['price']) * intval($item['quantity']);
+    if (is_array($cart_items)) {
+        foreach ($cart_items as $item) {
+            $price = isset($item['price']) ? floatval($item['price']) : 0;
+            $qty = isset($item['quantity']) ? intval($item['quantity']) : 0;
+            $subtotal += ($price * $qty);
+        }
     }
     
-    $tax = round($subtotal * $tax_rate, 2);
-    $total = round($subtotal + $tax + $shipping, 2);
+    $subtotal = round($subtotal, 2);
+    $tax = round($subtotal * floatval($tax_rate), 2);
+    $total = round($subtotal + $tax + floatval($shipping), 2);
     
     return [
-        'subtotal' => round($subtotal, 2),
+        'subtotal' => $subtotal,
         'tax' => $tax,
-        'tax_rate' => $tax_rate * 100,
-        'shipping' => $shipping,
+        'tax_rate' => floatval($tax_rate) * 100,
+        'shipping' => floatval($shipping),
         'total' => $total,
         'item_count' => count($cart_items)
     ];
@@ -89,7 +105,7 @@ function get_cart_summary($tax_rate = 0.08, $shipping = 50) {
     return [
         'items' => $items,
         'totals' => $totals,
-        'is_empty' => empty($items)
+        'is_empty' => (count($items) === 0)
     ];
 }
 
@@ -98,7 +114,7 @@ function get_cart_summary($tax_rate = 0.08, $shipping = 50) {
  * @return int
  */
 function get_cart_count() {
-    if (!is_array($_SESSION['cart'])) {
+    if (!isset($_SESSION['cart']) || !is_array($_SESSION['cart'])) {
         return 0;
     }
     
@@ -114,7 +130,10 @@ function get_cart_count() {
  * @return bool
  */
 function is_cart_empty() {
-    return empty($_SESSION['cart']) || !is_array($_SESSION['cart']);
+    if (!isset($_SESSION['cart'])) {
+        return true;
+    }
+    return !is_array($_SESSION['cart']) || count($_SESSION['cart']) === 0;
 }
 
 /**
@@ -133,22 +152,31 @@ function get_cart_item_by_product($product_id) {
     
     $quantity = intval($_SESSION['cart'][$product_id]);
     
+    if ($quantity <= 0) {
+        return null;
+    }
+    
     // Get product details
-    if ($stmt = $conn->prepare("SELECT id, name, price, image FROM products WHERE id = ?")) {
+    $query = "SELECT id, name, price FROM products WHERE id = ?";
+    
+    if ($stmt = $conn->prepare($query)) {
         $stmt->bind_param("i", $product_id);
+        
         if ($stmt->execute()) {
             $result = $stmt->get_result();
+            
             if ($result && $result->num_rows > 0) {
                 $product = $result->fetch_assoc();
+                
                 return [
-                    'id' => $product['id'],
-                    'name' => $product['name'],
+                    'id' => intval($product['id']),
+                    'name' => htmlspecialchars($product['name']),
                     'price' => floatval($product['price']),
-                    'quantity' => $quantity,
-                    'image' => $product['image']
+                    'quantity' => $quantity
                 ];
             }
         }
+        
         $stmt->close();
     }
     
@@ -165,30 +193,40 @@ function validate_cart_stock($cart_items) {
     
     $errors = [];
     
+    if (!is_array($cart_items)) {
+        return ['valid' => true, 'errors' => []];
+    }
+    
     foreach ($cart_items as $item) {
         $product_id = intval($item['id']);
+        $requested_qty = intval($item['quantity']);
         
-        if ($stmt = $conn->prepare("SELECT quantity FROM products WHERE id = ?")) {
+        $query = "SELECT quantity FROM products WHERE id = ?";
+        
+        if ($stmt = $conn->prepare($query)) {
             $stmt->bind_param("i", $product_id);
+            
             if ($stmt->execute()) {
                 $result = $stmt->get_result();
+                
                 if ($result && $result->num_rows > 0) {
                     $product = $result->fetch_assoc();
                     $available = intval($product['quantity']);
                     
-                    if ($available < intval($item['quantity'])) {
-                        $errors[] = htmlspecialchars($item['name']) . ' - Insufficient stock (Available: ' . $available . ', Requested: ' . intval($item['quantity']) . ')';
+                    if ($available < $requested_qty) {
+                        $errors[] = htmlspecialchars($item['name']) . ' - Insufficient stock (Available: ' . $available . ', Requested: ' . $requested_qty . ')';
                     }
                 } else {
                     $errors[] = htmlspecialchars($item['name']) . ' - Product not found';
                 }
             }
+            
             $stmt->close();
         }
     }
     
     return [
-        'valid' => empty($errors),
+        'valid' => (count($errors) === 0),
         'errors' => $errors
     ];
 }
