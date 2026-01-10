@@ -16,18 +16,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $qty = isset($_POST['qty']) ? intval($_POST['qty']) : 1;
         
         if ($action == 'update') {
-            // Update quantity
             if ($qty <= 0) {
                 unset($_SESSION['cart'][$product_id]);
             } else {
                 $_SESSION['cart'][$product_id] = $qty;
             }
         } elseif ($action == 'remove') {
-            // Remove from cart
             unset($_SESSION['cart'][$product_id]);
         }
         
-        // Redirect to prevent form resubmission
         header('Location: cart.php');
         exit;
     }
@@ -37,32 +34,11 @@ $messages = get_messages();
 $cart_summary = get_cart_summary();
 $cart_items = $cart_summary['items'];
 $totals = $cart_summary['totals'];
-$cart_count = get_cart_count();
-
-// Calculate cart total
-$cart_total = 0;
-if (is_array($_SESSION['cart'])) {
-    foreach ($_SESSION['cart'] as $pid => $qty) {
-        $pid = intval($pid);
-        $qty = intval($qty);
-        
-        if ($stmt = $conn->prepare("SELECT price FROM products WHERE id = ?")) {
-            $stmt->bind_param("i", $pid);
-            if ($stmt->execute()) {
-                $price_result = $stmt->get_result();
-                if ($price_result && $price_result->num_rows > 0) {
-                    $row = $price_result->fetch_assoc();
-                    $cart_total += floatval($row['price']) * $qty;
-                }
-            }
-            $stmt->close();
-        }
-    }
-}
+$cart_count = $totals['item_count'];
+$cart_total = $totals['total'];
 ?>
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="utf-8">
     <title>Shopping Cart - Electro</title>
@@ -73,9 +49,7 @@ if (is_array($_SESSION['cart'])) {
     <!-- Google Web Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&family=Roboto:wght@400;500;700&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 
     <!-- Icon Font Stylesheet -->
     <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.4/css/all.css" />
@@ -91,11 +65,9 @@ if (is_array($_SESSION['cart'])) {
     <!-- Template Stylesheet -->
     <link href="css/style.css" rel="stylesheet">
 </head>
-
 <body>
     <!-- Spinner Start -->
-    <div id="spinner"
-        class="show bg-white position-fixed translate-middle w-100 vh-100 top-50 start-50 d-flex align-items-center justify-content-center">
+    <div id="spinner" class="show bg-white position-fixed translate-middle w-100 vh-100 top-50 start-50 d-flex align-items-center justify-content-center">
         <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
             <span class="sr-only">Loading...</span>
         </div>
@@ -116,38 +88,13 @@ if (is_array($_SESSION['cart'])) {
                 <small class="text-dark">Call Us:</small>
                 <a href="#" class="text-muted">(+012) 1234 567890</a>
             </div>
-
             <div class="col-lg-4 text-center text-lg-end">
                 <div class="d-inline-flex align-items-center" style="height: 45px;">
                     <div class="dropdown">
-                        <a href="#" class="dropdown-toggle text-muted me-2" data-bs-toggle="dropdown"><small>
-                                USD</small></a>
+                        <a href="#" class="dropdown-toggle text-muted me-2" data-bs-toggle="dropdown"><small>USD</small></a>
                         <div class="dropdown-menu rounded">
                             <a href="#" class="dropdown-item"> Euro</a>
                             <a href="#" class="dropdown-item"> Dolar</a>
-                        </div>
-                    </div>
-                    <div class="dropdown">
-                        <a href="#" class="dropdown-toggle text-muted mx-2" data-bs-toggle="dropdown"><small>
-                                English</small></a>
-                        <div class="dropdown-menu rounded">
-                            <a href="#" class="dropdown-item"> English</a>
-                            <a href="#" class="dropdown-item"> Turkish</a>
-                            <a href="#" class="dropdown-item"> Spanol</a>
-                            <a href="#" class="dropdown-item"> Italiano</a>
-                        </div>
-                    </div>
-                    <div class="dropdown">
-                        <a href="#" class="dropdown-toggle text-muted ms-2" data-bs-toggle="dropdown"><small><i
-                                    class="fa fa-home me-2"></i> My Dashboard</small></a>
-                        <div class="dropdown-menu rounded">
-                            <a href="#" class="dropdown-item"> Login</a>
-                            <a href="#" class="dropdown-item"> Wishlist</a>
-                            <a href="#" class="dropdown-item"> My Card</a>
-                            <a href="#" class="dropdown-item"> Notifications</a>
-                            <a href="#" class="dropdown-item"> Account Settings</a>
-                            <a href="#" class="dropdown-item"> My Account</a>
-                            <a href="#" class="dropdown-item"> Log Out</a>
                         </div>
                     </div>
                 </div>
@@ -157,40 +104,24 @@ if (is_array($_SESSION['cart'])) {
     <div class="container-fluid px-5 py-4 d-none d-lg-block">
         <div class="row gx-0 align-items-center text-center">
             <div class="col-md-4 col-lg-3 text-center text-lg-start">
-                <div class="d-inline-flex align-items-center">
-                    <a href="index.php" class="navbar-brand p-0">
-                        <h1 class="display-5 text-primary m-0"><i
-                                class="fas fa-shopping-bag text-secondary me-2"></i>Electro</h1>
-                    </a>
-                </div>
+                <a href="index.php" class="navbar-brand p-0">
+                    <h1 class="display-5 text-primary m-0"><i class="fas fa-shopping-bag text-secondary me-2"></i>Electro</h1>
+                </a>
             </div>
             <div class="col-md-4 col-lg-6 text-center">
                 <div class="position-relative ps-4">
                     <div class="d-flex border rounded-pill">
-                        <input class="form-control border-0 rounded-pill w-100 py-3" type="text"
-                            data-bs-target="#dropdownToggle123" placeholder="Search Looking For?">
+                        <input class="form-control border-0 rounded-pill w-100 py-3" type="text" placeholder="Search Looking For?">
                         <select class="form-select text-dark border-0 border-start rounded-0 p-3" style="width: 200px;">
                             <option value="All Category">All Category</option>
-                            <option value="Pest Control-2">Category 1</option>
-                            <option value="Pest Control-3">Category 2</option>
-                            <option value="Pest Control-4">Category 3</option>
-                            <option value="Pest Control-5">Category 4</option>
                         </select>
-                        <button type="button" class="btn btn-primary rounded-pill py-3 px-5" style="border: 0;"><i
-                                class="fas fa-search"></i></button>
+                        <button type="button" class="btn btn-primary rounded-pill py-3 px-5" style="border: 0;"><i class="fas fa-search"></i></button>
                     </div>
                 </div>
             </div>
             <div class="col-md-4 col-lg-3 text-center text-lg-end">
-                <div class="d-inline-flex align-items-center">
-                    <a href="#" class="text-muted d-flex align-items-center justify-content-center me-3"><span
-                            class="rounded-circle btn-md-square border"><i class="fas fa-random"></i></i></a>
-                    <a href="#" class="text-muted d-flex align-items-center justify-content-center me-3"><span
-                            class="rounded-circle btn-md-square border"><i class="fas fa-heart"></i></a>
-                    <a href="cart.php" class="text-muted d-flex align-items-center justify-content-center"><span
-                            class="rounded-circle btn-md-square border"><i class="fas fa-shopping-cart"></i></span>
-                        <span class="text-dark ms-2">$<?php echo number_format($cart_total, 2); ?></span></a>
-                </div>
+                <a href="cart.php" class="text-muted d-flex align-items-center justify-content-center"><span class="rounded-circle btn-md-square border"><i class="fas fa-shopping-cart"></i></span>
+                    <span class="text-dark ms-2">$<?php echo number_format($cart_total, 2); ?></span></a>
             </div>
         </div>
     </div>
@@ -199,117 +130,21 @@ if (is_array($_SESSION['cart'])) {
     <!-- Navbar & Hero Start -->
     <div class="container-fluid nav-bar p-0">
         <div class="row gx-0 bg-primary px-5 align-items-center">
-            <div class="col-lg-3 d-none d-lg-block">
-                <nav class="navbar navbar-light position-relative" style="width: 250px;">
-                    <button class="navbar-toggler border-0 fs-4 w-100 px-0 text-start" type="button"
-                        data-bs-toggle="collapse" data-bs-target="#allCat">
-                        <h4 class="m-0"><i class="fa fa-bars me-2"></i>All Categories</h4>
-                    </button>
-                    <div class="collapse navbar-collapse rounded-bottom" id="allCat">
-                        <div class="navbar-nav ms-auto py-0">
-                            <ul class="list-unstyled categories-bars">
-                                <li>
-                                    <div class="categories-bars-item">
-                                        <a href="#">Accessories</a>
-                                        <span>(3)</span>
-                                    </div>
-                                </li>
-                                <li>
-                                    <div class="categories-bars-item">
-                                        <a href="#">Electronics & Computer</a>
-                                        <span>(5)</span>
-                                    </div>
-                                </li>
-                                <li>
-                                    <div class="categories-bars-item">
-                                        <a href="#">Laptops & Desktops</a>
-                                        <span>(2)</span>
-                                    </div>
-                                </li>
-                                <li>
-                                    <div class="categories-bars-item">
-                                        <a href="#">Mobiles & Tablets</a>
-                                        <span>(8)</span>
-                                    </div>
-                                </li>
-                                <li>
-                                    <div class="categories-bars-item">
-                                        <a href="#">SmartPhone & Smart TV</a>
-                                        <span>(5)</span>
-                                    </div>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-                </nav>
-            </div>
-            <div class="col-12 col-lg-9">
-                <nav class="navbar navbar-expand-lg navbar-light bg-primary ">
+            <div class="col-12 col-lg-9 ms-auto">
+                <nav class="navbar navbar-expand-lg navbar-light bg-primary">
                     <a href="index.php" class="navbar-brand d-block d-lg-none">
-                        <h1 class="display-5 text-secondary m-0"><i
-                                class="fas fa-shopping-bag text-white me-2"></i>Electro</h1>
+                        <h1 class="display-5 text-secondary m-0"><i class="fas fa-shopping-bag text-white me-2"></i>Electro</h1>
                     </a>
-                    <button class="navbar-toggler ms-auto" type="button" data-bs-toggle="collapse"
-                        data-bs-target="#navbarCollapse">
+                    <button class="navbar-toggler ms-auto" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse">
                         <span class="fa fa-bars fa-1x"></span>
                     </button>
                     <div class="collapse navbar-collapse" id="navbarCollapse">
                         <div class="navbar-nav ms-auto py-0">
                             <a href="index.php" class="nav-item nav-link">Home</a>
                             <a href="shop.php" class="nav-item nav-link">Shop</a>
-                            <a href="single.php" class="nav-item nav-link">Single Page</a>
-                            <div class="nav-item dropdown">
-                                <a href="#" class="nav-link active" data-bs-toggle="dropdown"><span
-                                        class="dropdown-toggle">Pages</span></a>
-                                <div class="dropdown-menu m-0">
-                                    <a href="#" class="dropdown-item">Bestseller</a>
-                                    <a href="cart.php" class="dropdown-item active">Cart Page</a>
-                                    <a href="checkout.php" class="dropdown-item">Checkout</a>
-                                    <a href="404.html" class="dropdown-item">404 Page</a>
-                                </div>
-                            </div>
+                            <a href="cart.php" class="nav-item nav-link active">Cart</a>
                             <a href="contact.php" class="nav-item nav-link me-2">Contact</a>
-                            <div class="nav-item dropdown d-block d-lg-none mb-3">
-                                <a href="#" class="nav-link" data-bs-toggle="dropdown"><span class="dropdown-toggle">All
-                                        Category</span></a>
-                                <div class="dropdown-menu m-0">
-                                    <ul class="list-unstyled categories-bars">
-                                        <li>
-                                            <div class="categories-bars-item">
-                                                <a href="#">Accessories</a>
-                                                <span>(3)</span>
-                                            </div>
-                                        </li>
-                                        <li>
-                                            <div class="categories-bars-item">
-                                                <a href="#">Electronics & Computer</a>
-                                                <span>(5)</span>
-                                            </div>
-                                        </li>
-                                        <li>
-                                            <div class="categories-bars-item">
-                                                <a href="#">Laptops & Desktops</a>
-                                                <span>(2)</span>
-                                            </div>
-                                        </li>
-                                        <li>
-                                            <div class="categories-bars-item">
-                                                <a href="#">Mobiles & Tablets</a>
-                                                <span>(8)</span>
-                                            </div>
-                                        </li>
-                                        <li>
-                                            <div class="categories-bars-item">
-                                                <a href="#">SmartPhone & Smart TV</a>
-                                                <span>(5)</span>
-                                            </div>
-                                        </li>
-                                    </ul>
-                                </div>
-                            </div>
                         </div>
-                        <a href="" class="btn btn-secondary rounded-pill py-2 px-4 px-lg-3 mb-3 mb-md-3 mb-lg-0"><i
-                                class="fa fa-mobile-alt me-2"></i> +0123 456 7890</a>
                     </div>
                 </nav>
             </div>
@@ -319,12 +154,7 @@ if (is_array($_SESSION['cart'])) {
 
     <!-- Single Page Header start -->
     <div class="container-fluid page-header py-5">
-        <h1 class="text-center text-white display-6 wow fadeInUp" data-wow-delay="0.1s">Cart Page</h1>
-        <ol class="breadcrumb justify-content-center mb-0 wow fadeInUp" data-wow-delay="0.3s">
-            <li class="breadcrumb-item"><a href="index.php">Home</a></li>
-            <li class="breadcrumb-item"><a href="#">Pages</a></li>
-            <li class="breadcrumb-item active text-white">Cart Page</li>
-        </ol>
+        <h1 class="text-center text-white display-6">Cart Page</h1>
     </div>
     <!-- Single Page Header End -->
 
@@ -332,7 +162,7 @@ if (is_array($_SESSION['cart'])) {
     <div class="container-fluid py-5">
         <div class="container py-5">
             <?php foreach ($messages as $msg): ?>
-                <div class="alert alert-<?php echo $msg['type']; ?> alert-dismissible fade show" role="alert">
+                <div class="alert alert-<?php echo htmlspecialchars($msg['type']); ?> alert-dismissible fade show" role="alert">
                     <?php echo htmlspecialchars($msg['text']); ?>
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
@@ -350,59 +180,34 @@ if (is_array($_SESSION['cart'])) {
                     <thead>
                         <tr>
                             <th scope="col">Name</th>
-                            <th scope="col">Model</th>
                             <th scope="col">Price</th>
                             <th scope="col">Quantity</th>
                             <th scope="col">Total</th>
-                            <th scope="col">Handle</th>
+                            <th scope="col">Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php foreach ($cart_items as $item): ?>
                         <tr>
-                            <th scope="row">
-                                <p class="mb-0 py-4"><?php echo htmlspecialchars($item['name']); ?></p>
-                            </th>
+                            <td><?php echo htmlspecialchars($item['name']); ?></td>
+                            <td>$<?php echo number_format($item['price'], 2); ?></td>
                             <td>
-                                <p class="mb-0 py-4">Model</p>
-                            </td>
-                            <td>
-                                <p class="mb-0 py-4">$<?php echo number_format($item['price'], 2); ?></p>
-                            </td>
-                            <td>
-                                <div class="input-group quantity py-4" style="width: 100px;">
-                                    <div class="input-group-btn">
-                                        <form method="post" style="display: inline;">
-                                            <input type="hidden" name="action" value="update">
-                                            <input type="hidden" name="product_id" value="<?php echo $item['id']; ?>">
-                                            <button class="btn btn-sm btn-minus rounded-circle bg-light border" type="submit" name="qty" value="<?php echo $item['quantity'] - 1; ?>">
-                                                <i class="fa fa-minus"></i>
-                                            </button>
-                                        </form>
+                                <form method="post" style="display: inline; width: 100px;">
+                                    <input type="hidden" name="action" value="update">
+                                    <input type="hidden" name="product_id" value="<?php echo $item['id']; ?>">
+                                    <div class="input-group">
+                                        <button class="btn btn-sm btn-outline-secondary" type="submit" name="qty" value="<?php echo max(1, $item['quantity'] - 1); ?>">-</button>
+                                        <input type="text" class="form-control form-control-sm text-center" value="<?php echo $item['quantity']; ?>" readonly>
+                                        <button class="btn btn-sm btn-outline-secondary" type="submit" name="qty" value="<?php echo $item['quantity'] + 1; ?>">+</button>
                                     </div>
-                                    <input type="text" class="form-control form-control-sm text-center border-0"
-                                        value="<?php echo $item['quantity']; ?>" readonly>
-                                    <div class="input-group-btn">
-                                        <form method="post" style="display: inline;">
-                                            <input type="hidden" name="action" value="update">
-                                            <input type="hidden" name="product_id" value="<?php echo $item['id']; ?>">
-                                            <button class="btn btn-sm btn-plus rounded-circle bg-light border" type="submit" name="qty" value="<?php echo $item['quantity'] + 1; ?>">
-                                                <i class="fa fa-plus"></i>
-                                            </button>
-                                        </form>
-                                    </div>
-                                </div>
+                                </form>
                             </td>
+                            <td>$<?php echo number_format($item['price'] * $item['quantity'], 2); ?></td>
                             <td>
-                                <p class="mb-0 py-4">$<?php echo number_format($item['price'] * $item['quantity'], 2); ?></p>
-                            </td>
-                            <td class="py-4">
                                 <form method="post" style="display: inline;">
                                     <input type="hidden" name="action" value="remove">
                                     <input type="hidden" name="product_id" value="<?php echo $item['id']; ?>">
-                                    <button class="btn btn-md rounded-circle bg-light border" type="submit" onclick="return confirm('Remove this item?');">
-                                        <i class="fa fa-times text-danger"></i>
-                                    </button>
+                                    <button class="btn btn-sm btn-danger" type="submit" onclick="return confirm('Remove this item?');">Remove</button>
                                 </form>
                             </td>
                         </tr>
@@ -410,36 +215,25 @@ if (is_array($_SESSION['cart'])) {
                     </tbody>
                 </table>
             </div>
-            <div class="mt-5">
-                <input type="text" class="border-0 border-bottom rounded me-5 py-3 mb-4" placeholder="Coupon Code">
-                <button class="btn btn-primary rounded-pill px-4 py-3" type="button">Apply Coupon</button>
-            </div>
-            <div class="row g-4 justify-content-end">
-                <div class="col-8"></div>
+
+            <div class="row g-4 justify-content-end mt-5">
                 <div class="col-sm-8 col-md-7 col-lg-6 col-xl-4">
-                    <div class="bg-light rounded">
-                        <div class="p-4">
-                            <h1 class="display-6 mb-4">Cart <span class="fw-normal">Total</span></h1>
-                            <div class="d-flex justify-content-between mb-4">
-                                <h5 class="mb-0 me-4">Subtotal:</h5>
-                                <p class="mb-0">$<?php echo number_format($totals['subtotal'], 2); ?></p>
-                            </div>
-                            <div class="d-flex justify-content-between">
-                                <h5 class="mb-0 me-4">Shipping</h5>
-                                <div>
-                                    <p class="mb-0">Flat rate: $<?php echo number_format($totals['shipping'], 2); ?></p>
-                                </div>
-                            </div>
-                            <p class="mb-0 text-end">Shipping to USA.</p>
+                    <div class="bg-light rounded p-4">
+                        <h3 class="mb-4">Cart Total</h3>
+                        <div class="d-flex justify-content-between mb-3">
+                            <h5>Subtotal:</h5>
+                            <p>$<?php echo number_format($totals['subtotal'], 2); ?></p>
                         </div>
-                        <div class="py-4 mb-4 border-top border-bottom d-flex justify-content-between">
-                            <h5 class="mb-0 ps-4 me-4">Total</h5>
-                            <p class="mb-0 pe-4">$<?php echo number_format($totals['total'], 2); ?></p>
+                        <div class="d-flex justify-content-between mb-3">
+                            <h5>Shipping:</h5>
+                            <p>$<?php echo number_format($totals['shipping'], 2); ?></p>
                         </div>
-                        <form method="post" action="checkout.php">
-                            <button class="btn btn-primary rounded-pill px-4 py-3 text-uppercase mb-4 ms-4"
-                                type="submit">Proceed Checkout</button>
-                        </form>
+                        <hr>
+                        <div class="d-flex justify-content-between mb-4">
+                            <h5 class="fw-bold">Total:</h5>
+                            <p class="fw-bold">$<?php echo number_format($totals['total'], 2); ?></p>
+                        </div>
+                        <a href="checkout.php" class="btn btn-primary rounded-pill w-100 py-3">Proceed Checkout</a>
                     </div>
                 </div>
             </div>
@@ -451,106 +245,21 @@ if (is_array($_SESSION['cart'])) {
     <!-- Footer Start -->
     <div class="container-fluid footer py-5 wow fadeIn" data-wow-delay="0.2s">
         <div class="container py-5">
-            <div class="row g-4 rounded mb-5" style="background: rgba(255, 255, 255, .03);">
-                <div class="col-md-6 col-lg-6 col-xl-3">
-                    <div class="rounded p-4">
-                        <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center mb-4"
-                            style="width: 70px; height: 70px;">
-                            <i class="fas fa-map-marker-alt fa-2x text-primary"></i>
-                        </div>
-                        <div>
-                            <h4 class="text-white">Address</h4>
-                            <p class="mb-2">123 Street New York.USA</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-6 col-lg-6 col-xl-3">
-                    <div class="rounded p-4">
-                        <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center mb-4"
-                            style="width: 70px; height: 70px;">
-                            <i class="fas fa-envelope fa-2x text-primary"></i>
-                        </div>
-                        <div>
-                            <h4 class="text-white">Mail Us</h4>
-                            <p class="mb-2">info@example.com</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-6 col-lg-6 col-xl-3">
-                    <div class="rounded p-4">
-                        <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center mb-4"
-                            style="width: 70px; height: 70px;">
-                            <i class="fa fa-phone-alt fa-2x text-primary"></i>
-                        </div>
-                        <div>
-                            <h4 class="text-white">Telephone</h4>
-                            <p class="mb-2">(+012) 3456 7890</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-6 col-lg-6 col-xl-3">
-                    <div class="rounded p-4">
-                        <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center mb-4"
-                            style="width: 70px; height: 70px;">
-                            <i class="fab fa-firefox-browser fa-2x text-primary"></i>
-                        </div>
-                        <div>
-                            <h4 class="text-white">Yoursite@ex.com</h4>
-                            <p class="mb-2">(+012) 3456 7890</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
             <div class="row g-5">
                 <div class="col-md-6 col-lg-6 col-xl-3">
                     <div class="footer-item d-flex flex-column">
-                        <div class="footer-item">
-                            <h4 class="text-primary mb-4">Newsletter</h4>
-                            <p class="text-white mb-3">Dolor amet sit justo amet elitr clita ipsum elitr est.Lorem ipsum
-                                dolor sit amet, consectetur adipiscing elit consectetur adipiscing elit.</p>
-                            <div class="position-relative mx-auto rounded-pill">
-                                <input class="form-control rounded-pill w-100 py-3 ps-4 pe-5" type="text"
-                                    placeholder="Enter your email">
-                                <button type="button"
-                                    class="btn btn-primary rounded-pill position-absolute top-0 end-0 py-2 mt-2 me-2">SignUp</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-6 col-lg-6 col-xl-3">
-                    <div class="footer-item d-flex flex-column">
                         <h4 class="text-primary mb-4">Customer Service</h4>
-                        <a href="#" class=""><i class="fas fa-angle-right me-2"></i> Contact Us</a>
-                        <a href="#" class=""><i class="fas fa-angle-right me-2"></i> Returns</a>
-                        <a href="#" class=""><i class="fas fa-angle-right me-2"></i> Order History</a>
-                        <a href="#" class=""><i class="fas fa-angle-right me-2"></i> Site Map</a>
-                        <a href="#" class=""><i class="fas fa-angle-right me-2"></i> Testimonials</a>
-                        <a href="#" class=""><i class="fas fa-angle-right me-2"></i> My Account</a>
-                        <a href="#" class=""><i class="fas fa-angle-right me-2"></i> Unsubscribe Notification</a>
+                        <a href="#"><i class="fas fa-angle-right me-2"></i> Contact Us</a>
+                        <a href="#"><i class="fas fa-angle-right me-2"></i> Returns</a>
+                        <a href="#"><i class="fas fa-angle-right me-2"></i> Order History</a>
                     </div>
                 </div>
                 <div class="col-md-6 col-lg-6 col-xl-3">
                     <div class="footer-item d-flex flex-column">
                         <h4 class="text-primary mb-4">Information</h4>
-                        <a href="#" class=""><i class="fas fa-angle-right me-2"></i> About Us</a>
-                        <a href="#" class=""><i class="fas fa-angle-right me-2"></i> Delivery infomation</a>
-                        <a href="#" class=""><i class="fas fa-angle-right me-2"></i> Privacy Policy</a>
-                        <a href="#" class=""><i class="fas fa-angle-right me-2"></i> Terms & Conditions</a>
-                        <a href="#" class=""><i class="fas fa-angle-right me-2"></i> Warranty</a>
-                        <a href="#" class=""><i class="fas fa-angle-right me-2"></i> FAQ</a>
-                        <a href="#" class=""><i class="fas fa-angle-right me-2"></i> Seller Login</a>
-                    </div>
-                </div>
-                <div class="col-md-6 col-lg-6 col-xl-3">
-                    <div class="footer-item d-flex flex-column">
-                        <h4 class="text-primary mb-4">Extras</h4>
-                        <a href="#" class=""><i class="fas fa-angle-right me-2"></i> Brands</a>
-                        <a href="#" class=""><i class="fas fa-angle-right me-2"></i> Gift Vouchers</a>
-                        <a href="#" class=""><i class="fas fa-angle-right me-2"></i> Affiliates</a>
-                        <a href="#" class=""><i class="fas fa-angle-right me-2"></i> Wishlist</a>
-                        <a href="#" class=""><i class="fas fa-angle-right me-2"></i> Order History</a>
-                        <a href="#" class=""><i class="fas fa-angle-right me-2"></i> Track Your Order</a>
-                        <a href="#" class=""><i class="fas fa-angle-right me-2"></i> Track Your Order</a>
+                        <a href="#"><i class="fas fa-angle-right me-2"></i> About Us</a>
+                        <a href="#"><i class="fas fa-angle-right me-2"></i> Privacy Policy</a>
+                        <a href="#"><i class="fas fa-angle-right me-2"></i> Terms & Conditions</a>
                     </div>
                 </div>
             </div>
@@ -563,13 +272,7 @@ if (is_array($_SESSION['cart'])) {
         <div class="container">
             <div class="row g-4 align-items-center">
                 <div class="col-md-6 text-center text-md-start mb-md-0">
-                    <span class="text-white"><a href="#" class="border-bottom text-white"><i
-                                class="fas fa-copyright text-light me-2"></i>Your Site Name</a>, All right
-                        reserved.</span>
-                </div>
-                <div class="col-md-6 text-center text-md-end text-white">
-                    Designed By <a class="border-bottom text-white" href="https://htmlcodex.com">HTML Codex</a>.
-                    Distributed By <a class="border-bottom text-white" href="https://themewagon.com">ThemeWagon</a>
+                    <span class="text-white"><a href="#" class="border-bottom text-white"><i class="fas fa-copyright text-light me-2"></i>Your Site Name</a>, All right reserved.</span>
                 </div>
             </div>
         </div>
@@ -588,5 +291,4 @@ if (is_array($_SESSION['cart'])) {
     <!-- Template Javascript -->
     <script src="js/main.js"></script>
 </body>
-
 </html>
