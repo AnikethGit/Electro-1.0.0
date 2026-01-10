@@ -1,4 +1,7 @@
 <?php
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../config/helpers.php';
 
@@ -11,26 +14,52 @@ $order_id = $_SESSION['last_order_id'];
 $order_db_id = $_SESSION['last_order_db_id'] ?? null;
 
 // Fetch order details
-$stmt = $pdo->prepare(
-    "SELECT o.*, COUNT(oi.id) as item_count, SUM(oi.quantity) as total_items 
-     FROM orders o 
-     LEFT JOIN order_items oi ON o.id = oi.order_id 
-     WHERE o.order_id = ? 
-     GROUP BY o.id"
-);
-$stmt->execute([$order_id]);
-$order = $stmt->fetch();
+$order = null;
+if (!is_null($order_db_id)) {
+    $query = "SELECT * FROM orders WHERE id = ?";
+    if ($stmt = $conn->prepare($query)) {
+        $stmt->bind_param("i", $order_db_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($result && $result->num_rows > 0) {
+            $order = $result->fetch_assoc();
+        }
+        $stmt->close();
+    }
+}
 
 if (!$order) {
-    redirect('index.php');
+    // Try to find by order_id
+    $query = "SELECT * FROM orders WHERE order_id = ?";
+    if ($stmt = $conn->prepare($query)) {
+        $stmt->bind_param("s", $order_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($result && $result->num_rows > 0) {
+            $order = $result->fetch_assoc();
+        }
+        $stmt->close();
+    } else {
+        redirect('../index.php');
+    }
+}
+
+if (!$order) {
+    redirect('../index.php');
 }
 
 // Fetch order items
-$items_stmt = $pdo->prepare(
-    "SELECT * FROM order_items WHERE order_id = ?"
-);
-$items_stmt->execute([$order_db_id]);
-$items = $items_stmt->fetchAll();
+$items = [];
+$items_query = "SELECT * FROM order_items WHERE order_id = ?";
+if ($stmt = $conn->prepare($items_query)) {
+    $stmt->bind_param("i", $order['id']);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    while ($result && $row = $result->fetch_assoc()) {
+        $items[] = $row;
+    }
+    $stmt->close();
+}
 
 // Clear session data
 unset($_SESSION['last_order_id']);
@@ -43,7 +72,9 @@ unset($_SESSION['last_order_db_id']);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Order Confirmation - Electro</title>
-    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.4/css/all.css" />
+    <link href="../css/bootstrap.min.css" rel="stylesheet">
+    <link href="../css/style.css" rel="stylesheet">
     <style>
         .thank-you-container {
             max-width: 800px;
@@ -64,6 +95,7 @@ unset($_SESSION['last_order_db_id']);
             justify-content: center;
             margin: 0 auto 20px;
             font-size: 40px;
+            color: white;
         }
         .thank-you-container h1 {
             color: #27ae60;
@@ -196,14 +228,6 @@ unset($_SESSION['last_order_db_id']);
     </style>
 </head>
 <body>
-    <header>
-        <nav>
-            <a href="../index.php">Home</a>
-            <a href="../shop.php">Shop</a>
-            <a href="../cart.php">Cart</a>
-        </nav>
-    </header>
-
     <div class="container">
         <div class="thank-you-container">
             <!-- Success Message -->
@@ -220,7 +244,7 @@ unset($_SESSION['last_order_db_id']);
                     </div>
                     <div>
                         <div class="order-info-label">Order Date</div>
-                        <div class="order-info-value"><?php echo format_date($order['created_at']); ?></div>
+                        <div class="order-info-value"><?php echo date('M d, Y', strtotime($order['created_at'])); ?></div>
                     </div>
                 </div>
                 <div class="order-info-row">
@@ -254,8 +278,7 @@ unset($_SESSION['last_order_db_id']);
                             <?php echo htmlspecialchars($order['shipping_address']); ?><br>
                             <?php echo htmlspecialchars($order['shipping_city']); ?>, 
                             <?php echo htmlspecialchars($order['shipping_state']); ?> 
-                            <?php echo htmlspecialchars($order['shipping_postal_code']); ?><br>
-                            <?php echo htmlspecialchars($order['shipping_country']); ?>
+                            <?php echo htmlspecialchars($order['shipping_postal_code']); ?>
                         </div>
                     </div>
                 </div>
@@ -263,7 +286,7 @@ unset($_SESSION['last_order_db_id']);
 
             <!-- Order Items -->
             <div class="order-items">
-                <h3>Order Items (<?php echo $order['item_count']; ?> items)</h3>
+                <h3>Order Items (<?php echo count($items); ?> items)</h3>
                 <div class="item-row header">
                     <div>Product</div>
                     <div style="text-align: center;">Qty</div>
@@ -273,16 +296,16 @@ unset($_SESSION['last_order_db_id']);
                 <?php foreach ($items as $item): ?>
                     <div class="item-row">
                         <div><?php echo htmlspecialchars($item['product_name']); ?></div>
-                        <div style="text-align: center;"><?php echo $item['quantity']; ?></div>
-                        <div style="text-align: center;"><?php echo format_price($item['price']); ?></div>
-                        <div style="text-align: right;"><?php echo format_price($item['subtotal']); ?></div>
+                        <div style="text-align: center;"><?php echo (int)$item['quantity']; ?></div>
+                        <div style="text-align: center;">$<?php echo number_format((float)$item['price'], 2); ?></div>
+                        <div style="text-align: right;">$<?php echo number_format((float)$item['subtotal'], 2); ?></div>
                     </div>
                 <?php endforeach; ?>
             </div>
 
             <!-- Order Total -->
             <div class="order-total">
-                Total Amount: <strong><?php echo format_price($order['total_amount']); ?></strong>
+                Total Amount: <strong>$<?php echo number_format((float)$order['total_amount'], 2); ?></strong>
             </div>
 
             <!-- Note -->
@@ -304,8 +327,6 @@ unset($_SESSION['last_order_db_id']);
         </div>
     </div>
 
-    <footer>
-        <p>&copy; 2026 Electro. All rights reserved.</p>
-    </footer>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
