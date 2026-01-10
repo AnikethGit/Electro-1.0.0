@@ -4,10 +4,93 @@
  * Processes checkout form, creates order, and clears cart
  */
 
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../config/helpers.php';
-require_once __DIR__ . '/../cart/get_cart.php';
-require_once __DIR__ . '/../cart/cart_handler.php';
+
+// Inline cart functions
+function is_cart_empty() {
+    if (!isset($_SESSION['cart'])) {
+        return true;
+    }
+    return !is_array($_SESSION['cart']) || count($_SESSION['cart']) === 0;
+}
+
+function get_cart_items() {
+    global $conn;
+    
+    if (!isset($_SESSION['cart'])) {
+        return [];
+    }
+    
+    if (!is_array($_SESSION['cart']) || count($_SESSION['cart']) === 0) {
+        return [];
+    }
+    
+    $cart_items = [];
+    
+    foreach ($_SESSION['cart'] as $product_id => $quantity) {
+        $product_id = intval($product_id);
+        $quantity = intval($quantity);
+        
+        if ($quantity <= 0 || $product_id <= 0) {
+            continue;
+        }
+        
+        $query = "SELECT id, name, price FROM products WHERE id = ?";
+        
+        if ($stmt = $conn->prepare($query)) {
+            $stmt->bind_param("i", $product_id);
+            
+            if ($stmt->execute()) {
+                $result = $stmt->get_result();
+                
+                if ($result && $result->num_rows > 0) {
+                    $product = $result->fetch_assoc();
+                    
+                    $cart_items[] = [
+                        'id' => intval($product['id']),
+                        'product_id' => intval($product['id']),
+                        'name' => htmlspecialchars($product['name']),
+                        'price' => floatval($product['price']),
+                        'quantity' => $quantity
+                    ];
+                }
+            }
+            
+            $stmt->close();
+        }
+    }
+    
+    return $cart_items;
+}
+
+function calculate_cart_totals($cart_items, $tax_rate = 0.08, $shipping = 50) {
+    $subtotal = 0.0;
+    
+    if (is_array($cart_items)) {
+        foreach ($cart_items as $item) {
+            $price = isset($item['price']) ? floatval($item['price']) : 0;
+            $qty = isset($item['quantity']) ? intval($item['quantity']) : 0;
+            $subtotal += ($price * $qty);
+        }
+    }
+    
+    $subtotal = round($subtotal, 2);
+    $tax = round($subtotal * floatval($tax_rate), 2);
+    $total = round($subtotal + $tax + floatval($shipping), 2);
+    
+    return [
+        'subtotal' => $subtotal,
+        'tax' => $tax,
+        'tax_rate' => floatval($tax_rate) * 100,
+        'shipping' => floatval($shipping),
+        'total' => $total,
+        'item_count' => count($cart_items)
+    ];
+}
 
 // Only accept POST requests
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -22,7 +105,7 @@ if (is_cart_empty()) {
 
 try {
     // Validate required fields
-    $required_fields = ['email', 'first_name', 'last_name', 'phone', 'address', 'city', 'state', 'postal_code', 'country', 'payment_method'];
+    $required_fields = ['email', 'full_name', 'phone', 'address', 'city', 'state', 'postal_code', 'payment_method'];
     $errors = [];
     $data = [];
 
@@ -42,107 +125,132 @@ try {
     }
 
     // Validate email
-    if (!is_valid_email($data['email'])) {
+    if (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
         add_message('Invalid email address', 'error');
         redirect('checkout.php');
     }
 
     // Get cart data
-    $cart_summary = get_cart_summary(0.08, 5.00);
-    $cart_items = $cart_summary['items'];
-    $totals = $cart_summary['totals'];
+    $cart_items = get_cart_items();
+    $totals = calculate_cart_totals($cart_items, 0.08, 50);
 
-    // Validate stock again
-    $stock_validation = validate_cart_stock($cart_items);
-    if (!$stock_validation['valid']) {
-        foreach ($stock_validation['errors'] as $error) {
-            add_message($error, 'error');
-        }
+    if (empty($cart_items)) {
+        add_message('Your cart is empty or products not found', 'error');
         redirect('cart.php');
     }
 
-    // Start transaction
-    $pdo->beginTransaction();
+    // Validate stock
+    foreach ($cart_items as $item) {
+        $item_id = intval($item['id']);
+        $qty = intval($item['quantity']);
+        
+        $stock_query = "SELECT quantity FROM products WHERE id = ?";
+        if ($stmt = $conn->prepare($stock_query)) {
+            $stmt->bind_param("i", $item_id);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            
+            if ($result && $result->num_rows > 0) {
+                $product = $result->fetch_assoc();
+                if (intval($product['quantity']) < $qty) {
+                    add_message('Product ' . htmlspecialchars($item['name']) . ' is out of stock', 'error');
+                    redirect('cart.php');
+                }
+            } else {
+                add_message('Product not found', 'error');
+                redirect('cart.php');
+            }
+            $stmt->close();
+        }
+    }
 
     // Create order
-    $order_id = generate_order_id();
-    $user_id = is_logged_in() ? $_SESSION['user_id'] : null;
+    $order_id = 'ORD-' . strtoupper(uniqid());
+    $user_id = isset($_SESSION['user_id']) ? intval($_SESSION['user_id']) : null;
     
     $shipping_address = $data['address'] . ', ' . $data['city'] . ', ' . $data['state'];
+    $payment_method = $data['payment_method'];
+    $notes = isset($_POST['notes']) ? sanitize($_POST['notes']) : '';
     
-    $stmt = $pdo->prepare(
-        "INSERT INTO orders (order_id, user_id, email, phone, shipping_address, shipping_city, 
-         shipping_state, shipping_postal_code, shipping_country, total_amount, payment_method, 
-         order_status, notes, created_at) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', ?, NOW())"
-    );
+    $order_query = "INSERT INTO orders (order_id, user_id, email, phone, shipping_address, shipping_city, 
+                    shipping_state, shipping_postal_code, total_amount, payment_method, 
+                    order_status, notes, created_at) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', ?, NOW())";
     
-    $notes = sanitize($_POST['notes'] ?? '');
-    $stmt->execute([
-        $order_id,
-        $user_id,
-        $data['email'],
-        $data['phone'],
-        $shipping_address,
-        $data['city'],
-        $data['state'],
-        $data['postal_code'],
-        $data['country'],
-        $totals['total'],
-        $data['payment_method'],
-        $notes
-    ]);
-
-    // Get the created order's ID
-    $order_db_id = $pdo->lastInsertId();
-
-    // Add items to order_items
-    $item_stmt = $pdo->prepare(
-        "INSERT INTO order_items (order_id, product_id, product_name, quantity, price, subtotal) 
-         VALUES (?, ?, ?, ?, ?, ?)"
-    );
-
-    foreach ($cart_items as $item) {
-        $subtotal = $item['price'] * $item['quantity'];
-        $item_stmt->execute([
-            $order_db_id,
-            $item['product_id'],
-            $item['name'],
-            $item['quantity'],
-            $item['price'],
-            $subtotal
-        ]);
-
-        // Update product stock
-        $stock_stmt = $pdo->prepare(
-            "UPDATE products SET quantity = quantity - ? WHERE id = ?"
+    if ($order_stmt = $conn->prepare($order_query)) {
+        $order_stmt->bind_param(
+            "sissssssds",
+            $order_id,
+            $user_id,
+            $data['email'],
+            $data['phone'],
+            $shipping_address,
+            $data['city'],
+            $data['state'],
+            $data['postal_code'],
+            $totals['total'],
+            $payment_method,
+            $notes
         );
-        $stock_stmt->execute([$item['quantity'], $item['product_id']]);
+        
+        if ($order_stmt->execute()) {
+            $order_db_id = $conn->insert_id;
+            $order_stmt->close();
+            
+            // Add items to order_items
+            $item_query = "INSERT INTO order_items (order_id, product_id, product_name, quantity, price, subtotal) 
+                          VALUES (?, ?, ?, ?, ?, ?)";
+            
+            foreach ($cart_items as $item) {
+                $subtotal = floatval($item['price']) * intval($item['quantity']);
+                $item_id = intval($item['id']);
+                $item_qty = intval($item['quantity']);
+                $item_price = floatval($item['price']);
+                
+                if ($item_stmt = $conn->prepare($item_query)) {
+                    $item_stmt->bind_param(
+                        "iisiad",
+                        $order_db_id,
+                        $item_id,
+                        $item['name'],
+                        $item_qty,
+                        $item_price,
+                        $subtotal
+                    );
+                    
+                    if ($item_stmt->execute()) {
+                        // Update product stock
+                        $stock_update = "UPDATE products SET quantity = quantity - ? WHERE id = ?";
+                        if ($stock_stmt = $conn->prepare($stock_update)) {
+                            $stock_stmt->bind_param("ii", $item_qty, $item_id);
+                            $stock_stmt->execute();
+                            $stock_stmt->close();
+                        }
+                    }
+                    $item_stmt->close();
+                }
+            }
+            
+            // Clear cart from SESSION
+            $_SESSION['cart'] = [];
+            
+            // Set session variables for thank you page
+            $_SESSION['last_order_id'] = $order_id;
+            $_SESSION['last_order_db_id'] = $order_db_id;
+            
+            add_message('Order placed successfully!', 'success');
+            redirect('thank_you.php');
+        } else {
+            add_message('Error creating order: ' . $conn->error, 'error');
+            redirect('checkout.php');
+        }
+    } else {
+        add_message('Error: ' . $conn->error, 'error');
+        redirect('checkout.php');
     }
-
-    // Clear cart
-    $user_id_val = is_logged_in() ? $_SESSION['user_id'] : null;
-    $session_id_val = !is_logged_in() ? session_id() : null;
-    $clear_stmt = $pdo->prepare(
-        "DELETE FROM cart WHERE (user_id = ? OR session_id = ?)"
-    );
-    $clear_stmt->execute([$user_id_val, $session_id_val]);
-
-    // Commit transaction
-    $pdo->commit();
-
-    // Redirect to thank you page
-    $_SESSION['last_order_id'] = $order_id;
-    $_SESSION['last_order_db_id'] = $order_db_id;
-    redirect('orders/thank_you.php');
 
 } catch (Exception $e) {
-    // Rollback if error
-    if ($pdo->inTransaction()) {
-        $pdo->rollBack();
-    }
-    
-    add_message('Error processing order: ' . $e->getMessage(), 'error');
+    add_message('Error processing order: ' . htmlspecialchars($e->getMessage()), 'error');
     redirect('checkout.php');
 }
 
