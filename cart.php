@@ -239,7 +239,7 @@ if (is_array($_SESSION['cart'])) {
                                     <a href="404.html" class="dropdown-item">404 Page</a>
                                 </div>
                             </div>
-                            <a href="#" class="nav-item nav-link me-2">Contact</a>
+                            <a href="contact.php" class="nav-item nav-link me-2">Contact</a>
                             <div class="nav-item dropdown d-block d-lg-none mb-3">
                                 <a href="#" class="nav-link" data-bs-toggle="dropdown"><span class="dropdown-toggle">All
                                         Category</span></a>
