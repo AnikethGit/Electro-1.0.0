@@ -173,89 +173,155 @@ try {
     $notes = isset($_POST['notes']) ? sanitize($_POST['notes']) : '';
     $order_status = 'Pending';
     
-    // Insert with 12 question marks - all need binding
-    // created_at gets NOW() which is part of the SQL statement
-    $order_query = "INSERT INTO orders (order_id, user_id, email, phone, shipping_address, shipping_city, 
-                    shipping_state, shipping_postal_code, total_amount, payment_method, 
-                    order_status, notes, created_at) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
-    
-    if ($order_stmt = $conn->prepare($order_query)) {
-        // 12 placeholders require 12 type characters
-        // s, i, s, s, s, s, s, s, d, s, s, s
-        $order_stmt->bind_param(
-            "sissssssdsss",
-            $order_id,           // s (string)
-            $user_id,            // i (integer)  
-            $data['email'],      // s (string)
-            $data['phone'],      // s (string)
-            $shipping_address,   // s (string)
-            $data['city'],       // s (string)
-            $data['state'],      // s (string)
-            $data['postal_code'],// s (string)
-            $totals['total'],    // d (double)
-            $payment_method,     // s (string)
-            $order_status,       // s (string)
-            $notes               // s (string)
-        );
+    // Use conditional query based on whether user is logged in
+    if ($user_id !== null) {
+        // User logged in - include user_id
+        $order_query = "INSERT INTO orders (
+                            order_id, 
+                            user_id, 
+                            email, 
+                            phone, 
+                            shipping_address, 
+                            shipping_city, 
+                            shipping_state, 
+                            shipping_postal_code, 
+                            total_amount, 
+                            payment_method, 
+                            order_status, 
+                            notes, 
+                            created_at
+                        ) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
         
-        if ($order_stmt->execute()) {
-            $order_db_id = $conn->insert_id;
-            $order_stmt->close();
+        if ($order_stmt = $conn->prepare($order_query)) {
+            // 12 values: order_id(s), user_id(i), email(s), phone(s), 
+            // shipping_address(s), city(s), state(s), postal_code(s), 
+            // total(d), payment_method(s), status(s), notes(s)
+            $bind_result = $order_stmt->bind_param(
+                "sissssssdsss",
+                $order_id,
+                $user_id,
+                $data['email'],
+                $data['phone'],
+                $shipping_address,
+                $data['city'],
+                $data['state'],
+                $data['postal_code'],
+                $totals['total'],
+                $payment_method,
+                $order_status,
+                $notes
+            );
             
-            // Add items to order_items
-            $item_query = "INSERT INTO order_items (order_id, product_id, product_name, quantity, price, subtotal) 
-                          VALUES (?, ?, ?, ?, ?, ?)";
-            
-            foreach ($cart_items as $item) {
-                $subtotal = floatval($item['price']) * intval($item['quantity']);
-                $item_id = intval($item['id']);
-                $item_qty = intval($item['quantity']);
-                $item_price = floatval($item['price']);
-                
-                if ($item_stmt = $conn->prepare($item_query)) {
-                    $item_stmt->bind_param(
-                        "iisiad",
-                        $order_db_id,
-                        $item_id,
-                        $item['name'],
-                        $item_qty,
-                        $item_price,
-                        $subtotal
-                    );
-                    
-                    if ($item_stmt->execute()) {
-                        // Update product stock
-                        $stock_update = "UPDATE products SET quantity = quantity - ? WHERE id = ?";
-                        if ($stock_stmt = $conn->prepare($stock_update)) {
-                            $stock_stmt->bind_param("ii", $item_qty, $item_id);
-                            $stock_stmt->execute();
-                            $stock_stmt->close();
-                        }
-                    } else {
-                        error_log("Error inserting order item: " . $item_stmt->error);
-                    }
-                    $item_stmt->close();
-                }
+            if (!$bind_result) {
+                throw new Exception("bind_param failed (logged-in user): " . $order_stmt->error);
             }
-            
-            // Clear cart from SESSION
-            $_SESSION['cart'] = [];
-            
-            // Set session variables for thank you page
-            $_SESSION['last_order_id'] = $order_id;
-            $_SESSION['last_order_db_id'] = $order_db_id;
-            
-            add_message('Order placed successfully!', 'success');
-            redirect('thank_you.php');
         } else {
-            error_log("Order creation failed: " . $order_stmt->error);
-            add_message('Error creating order. Please try again.', 'error');
-            redirect('checkout.php');
+            throw new Exception("prepare failed: " . $conn->error);
         }
     } else {
-        error_log("Prepare error: " . $conn->error);
-        add_message('Database error. Please try again.', 'error');
+        // Guest checkout - no user_id
+        $order_query = "INSERT INTO orders (
+                            order_id, 
+                            email, 
+                            phone, 
+                            shipping_address, 
+                            shipping_city, 
+                            shipping_state, 
+                            shipping_postal_code, 
+                            total_amount, 
+                            payment_method, 
+                            order_status, 
+                            notes, 
+                            created_at
+                        ) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+        
+        if ($order_stmt = $conn->prepare($order_query)) {
+            // 11 values: order_id(s), email(s), phone(s), 
+            // shipping_address(s), city(s), state(s), postal_code(s), 
+            // total(d), payment_method(s), status(s), notes(s)
+            $bind_result = $order_stmt->bind_param(
+                "sssssssdsss",
+                $order_id,
+                $data['email'],
+                $data['phone'],
+                $shipping_address,
+                $data['city'],
+                $data['state'],
+                $data['postal_code'],
+                $totals['total'],
+                $payment_method,
+                $order_status,
+                $notes
+            );
+            
+            if (!$bind_result) {
+                throw new Exception("bind_param failed (guest): " . $order_stmt->error);
+            }
+        } else {
+            throw new Exception("prepare failed: " . $conn->error);
+        }
+    }
+    
+    // Execute the order insert
+    if ($order_stmt->execute()) {
+        $order_db_id = $conn->insert_id;
+        $order_stmt->close();
+        
+        // Add items to order_items
+        $item_query = "INSERT INTO order_items (order_id, product_id, product_name, quantity, price, subtotal) 
+                      VALUES (?, ?, ?, ?, ?, ?)";
+        
+        foreach ($cart_items as $item) {
+            $subtotal = floatval($item['price']) * intval($item['quantity']);
+            $item_id = intval($item['id']);
+            $item_qty = intval($item['quantity']);
+            $item_price = floatval($item['price']);
+            
+            if ($item_stmt = $conn->prepare($item_query)) {
+                $item_bind = $item_stmt->bind_param(
+                    "iisiad",
+                    $order_db_id,
+                    $item_id,
+                    $item['name'],
+                    $item_qty,
+                    $item_price,
+                    $subtotal
+                );
+                
+                if (!$item_bind) {
+                    error_log("Item bind_param error: " . $item_stmt->error);
+                    continue;
+                }
+                
+                if ($item_stmt->execute()) {
+                    // Update product stock
+                    $stock_update = "UPDATE products SET quantity = quantity - ? WHERE id = ?";
+                    if ($stock_stmt = $conn->prepare($stock_update)) {
+                        $stock_stmt->bind_param("ii", $item_qty, $item_id);
+                        $stock_stmt->execute();
+                        $stock_stmt->close();
+                    }
+                } else {
+                    error_log("Error inserting order item: " . $item_stmt->error);
+                }
+                $item_stmt->close();
+            }
+        }
+        
+        // Clear cart from SESSION
+        $_SESSION['cart'] = [];
+        
+        // Set session variables for thank you page
+        $_SESSION['last_order_id'] = $order_id;
+        $_SESSION['last_order_db_id'] = $order_db_id;
+        
+        add_message('Order placed successfully!', 'success');
+        redirect('thank_you.php');
+    } else {
+        error_log("Order execution failed: " . $order_stmt->error);
+        add_message('Error creating order. Please try again.', 'error');
         redirect('checkout.php');
     }
 
