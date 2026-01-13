@@ -173,19 +173,20 @@ try {
     $notes = isset($_POST['notes']) ? sanitize($_POST['notes']) : '';
     $order_status = 'Pending';
     
-    // Insert query with 11 actual ? placeholders (created_at uses NOW())
+    // Insert with 12 question marks - all need binding
+    // created_at gets NOW() which is part of the SQL statement
     $order_query = "INSERT INTO orders (order_id, user_id, email, phone, shipping_address, shipping_city, 
                     shipping_state, shipping_postal_code, total_amount, payment_method, 
                     order_status, notes, created_at) 
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
     
     if ($order_stmt = $conn->prepare($order_query)) {
-        // 11 question marks = 11 variables to bind
-        // s=string, i=integer, d=double
+        // 12 placeholders require 12 type characters
+        // s, i, s, s, s, s, s, s, d, s, s, s
         $order_stmt->bind_param(
-            "sissssssdss",
+            "sissssssdsss",
             $order_id,           // s (string)
-            $user_id,            // i (integer)
+            $user_id,            // i (integer)  
             $data['email'],      // s (string)
             $data['phone'],      // s (string)
             $shipping_address,   // s (string)
