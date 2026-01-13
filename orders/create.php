@@ -173,32 +173,29 @@ try {
     $notes = isset($_POST['notes']) ? sanitize($_POST['notes']) : '';
     $order_status = 'Pending';
     
-    // Insert query - created_at uses NOW() function, not a placeholder
+    // Insert query with 11 actual ? placeholders (created_at uses NOW())
     $order_query = "INSERT INTO orders (order_id, user_id, email, phone, shipping_address, shipping_city, 
                     shipping_state, shipping_postal_code, total_amount, payment_method, 
                     order_status, notes, created_at) 
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
     
     if ($order_stmt = $conn->prepare($order_query)) {
-        // Bind parameters in the correct order: s=string, i=integer, d=double
-        // 12 ? marks total, but last one is NOW() so only 11 variables to bind
-        // order_id(s), user_id(i), email(s), phone(s), shipping_address(s), shipping_city(s),
-        // shipping_state(s), shipping_postal_code(s), total_amount(d), payment_method(s),
-        // order_status(s), notes(s)
+        // 11 question marks = 11 variables to bind
+        // s=string, i=integer, d=double
         $order_stmt->bind_param(
             "sissssssdss",
-            $order_id,
-            $user_id,
-            $data['email'],
-            $data['phone'],
-            $shipping_address,
-            $data['city'],
-            $data['state'],
-            $data['postal_code'],
-            $totals['total'],
-            $payment_method,
-            $order_status,
-            $notes
+            $order_id,           // s (string)
+            $user_id,            // i (integer)
+            $data['email'],      // s (string)
+            $data['phone'],      // s (string)
+            $shipping_address,   // s (string)
+            $data['city'],       // s (string)
+            $data['state'],      // s (string)
+            $data['postal_code'],// s (string)
+            $totals['total'],    // d (double)
+            $payment_method,     // s (string)
+            $order_status,       // s (string)
+            $notes               // s (string)
         );
         
         if ($order_stmt->execute()) {
