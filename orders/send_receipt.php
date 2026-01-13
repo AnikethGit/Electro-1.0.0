@@ -33,6 +33,10 @@ function send_order_receipt($order_id, $order_db_id, $email, $phone, $order_item
         }
     }
     
+    // Build tracking URL
+    $tracking_url = $_SERVER['HTTP_HOST'] . str_replace('/orders/send_receipt.php', '', $_SERVER['SCRIPT_NAME']) . '/orders/track.php?order_id=' . urlencode($order_id);
+    $tracking_url = 'https://' . $tracking_url;
+    
     // Build email HTML
     $html_message = "
     <html>
@@ -111,7 +115,7 @@ function send_order_receipt($order_id, $order_db_id, $email, $phone, $order_item
                 <div class='tracking-section'>
                     <h3 style='margin-top: 0;'>Track Your Order</h3>
                     <p>You can track your order status anytime using the link below:</p>
-                    <a href='" . BASE_URL . "orders/track.php?order_id={$order_id}' class='tracking-link'>Track Order</a>
+                    <a href='{$tracking_url}' class='tracking-link'>Track Order</a>
                 </div>
                 
                 <p style='color: #666; margin-top: 20px;'>If you have any questions about your order, please contact us at support@shopspree.com or call us at (012) 1234 567890.</p>
