@@ -280,8 +280,10 @@ try {
             $item_price = floatval($item['price']);
             
             if ($item_stmt = $conn->prepare($item_query)) {
+                // Type string: order_id(i), product_id(i), product_name(s), 
+                // quantity(i), price(d), subtotal(d)
                 $item_bind = $item_stmt->bind_param(
-                    "iisiad",
+                    "iisidd",
                     $order_db_id,
                     $item_id,
                     $item['name'],
