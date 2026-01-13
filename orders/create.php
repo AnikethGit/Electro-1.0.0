@@ -173,7 +173,7 @@ try {
     $notes = isset($_POST['notes']) ? sanitize($_POST['notes']) : '';
     $order_status = 'Pending';
     
-    // Fixed: Correct the order of fields to match bind_param order
+    // Insert query - created_at uses NOW() function, not a placeholder
     $order_query = "INSERT INTO orders (order_id, user_id, email, phone, shipping_address, shipping_city, 
                     shipping_state, shipping_postal_code, total_amount, payment_method, 
                     order_status, notes, created_at) 
@@ -181,6 +181,7 @@ try {
     
     if ($order_stmt = $conn->prepare($order_query)) {
         // Bind parameters in the correct order: s=string, i=integer, d=double
+        // 12 ? marks total, but last one is NOW() so only 11 variables to bind
         // order_id(s), user_id(i), email(s), phone(s), shipping_address(s), shipping_city(s),
         // shipping_state(s), shipping_postal_code(s), total_amount(d), payment_method(s),
         // order_status(s), notes(s)
