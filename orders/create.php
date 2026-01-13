@@ -9,6 +9,7 @@ ini_set('display_errors', 1);
 
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../config/helpers.php';
+require_once __DIR__ . '/send_receipt.php';
 
 // Inline cart functions
 function is_cart_empty() {
@@ -312,12 +313,25 @@ try {
             }
         }
         
+        // SEND RECEIPT EMAIL
+        $email_sent = send_order_receipt(
+            $order_id,
+            $order_db_id,
+            $data['email'],
+            $data['phone'],
+            $cart_items,
+            $totals,
+            $payment_method,
+            $shipping_address
+        );
+        
         // Clear cart from SESSION
         $_SESSION['cart'] = [];
         
         // Set session variables for thank you page
         $_SESSION['last_order_id'] = $order_id;
         $_SESSION['last_order_db_id'] = $order_db_id;
+        $_SESSION['receipt_sent'] = $email_sent;
         
         add_message('Order placed successfully!', 'success');
         redirect('thank_you.php');
