@@ -171,15 +171,21 @@ try {
     $shipping_address = $data['address'] . ', ' . $data['city'] . ', ' . $data['state'];
     $payment_method = $data['payment_method'];
     $notes = isset($_POST['notes']) ? sanitize($_POST['notes']) : '';
+    $order_status = 'Pending';
     
+    // Fixed: Correct the order of fields to match bind_param order
     $order_query = "INSERT INTO orders (order_id, user_id, email, phone, shipping_address, shipping_city, 
                     shipping_state, shipping_postal_code, total_amount, payment_method, 
                     order_status, notes, created_at) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', ?, NOW())";
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
     
     if ($order_stmt = $conn->prepare($order_query)) {
+        // Bind parameters in the correct order: s=string, i=integer, d=double
+        // order_id(s), user_id(i), email(s), phone(s), shipping_address(s), shipping_city(s),
+        // shipping_state(s), shipping_postal_code(s), total_amount(d), payment_method(s),
+        // order_status(s), notes(s)
         $order_stmt->bind_param(
-            "sissssssds",
+            "sissssssdss",
             $order_id,
             $user_id,
             $data['email'],
@@ -190,6 +196,7 @@ try {
             $data['postal_code'],
             $totals['total'],
             $payment_method,
+            $order_status,
             $notes
         );
         
@@ -226,6 +233,8 @@ try {
                             $stock_stmt->execute();
                             $stock_stmt->close();
                         }
+                    } else {
+                        error_log("Error inserting order item: " . $item_stmt->error);
                     }
                     $item_stmt->close();
                 }
@@ -241,15 +250,18 @@ try {
             add_message('Order placed successfully!', 'success');
             redirect('thank_you.php');
         } else {
-            add_message('Error creating order: ' . $conn->error, 'error');
+            error_log("Order creation failed: " . $order_stmt->error);
+            add_message('Error creating order. Please try again.', 'error');
             redirect('checkout.php');
         }
     } else {
-        add_message('Error: ' . $conn->error, 'error');
+        error_log("Prepare error: " . $conn->error);
+        add_message('Database error. Please try again.', 'error');
         redirect('checkout.php');
     }
 
 } catch (Exception $e) {
+    error_log("Exception in order creation: " . $e->getMessage());
     add_message('Error processing order: ' . htmlspecialchars($e->getMessage()), 'error');
     redirect('checkout.php');
 }
