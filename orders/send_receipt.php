@@ -34,8 +34,7 @@ function send_order_receipt($order_id, $order_db_id, $email, $phone, $order_item
     }
     
     // Build tracking URL
-    $tracking_url = $_SERVER['HTTP_HOST'] . str_replace('/orders/send_receipt.php', '', $_SERVER['SCRIPT_NAME']) . '/orders/track.php?order_id=' . urlencode($order_id);
-    $tracking_url = 'https://' . $tracking_url;
+    $tracking_url = 'https://' . $_SERVER['HTTP_HOST'] . '/ecommerc/orders/track.php?order_id=' . urlencode($order_id);
     
     // Build email HTML
     $html_message = "
